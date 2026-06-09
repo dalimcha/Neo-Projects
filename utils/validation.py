@@ -1,0 +1,370 @@
+"""
+validation.py
+─────────────
+Universe completeness and data quality gates.
+
+EVERY analytic in the app must check `passes()` before computing.
+If validation fails, show the warning panel and refuse to display
+fake numbers.
+
+The thresholds are deliberately strict: an institutional terminal
+that shows partial data is worse than one that admits it has no data.
+"""
+
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from datetime import datetime, timedelta
+from typing import Optional
+from pathlib import Path
+import pandas as pd
+import streamlit as st
+
+
+# ── Universe definitions ──────────────────────────────────────────────────────
+
+UNIVERSE_SPECS = {
+    "Nifty 50":      {"expected": 50,   "min_valid": 45},
+    "Nifty 100":     {"expected": 100,  "min_valid": 90},
+    "Nifty 500":     {"expected": 500,  "min_valid": 450},
+    "Top 1000":      {"expected": 1000, "min_valid": 900},
+}
+
+# Per-analytic minimum thresholds (% of selected universe)
+ANALYTIC_GATES = {
+    "breadth":          0.90,   # 90% need valid 1D return
+    "top_movers":       0.90,
+    "volume_shocks":    0.80,
+    "52w_extremes":     0.80,
+    "sector_heatmap":   0.80,   # 80% need sector + valid return
+    "ai_summary":       0.90,
+}
+
+# Freshness windows (in hours, for trading-day data)
+FRESHNESS = {
+    "fresh":   24,   # data point is from the last business day
+    "delayed": 48,
+    "stale":   168,  # > 1 week = stale
+}
+
+
+@dataclass
+class UniverseReport:
+    """Snapshot of the selected universe's data quality."""
+    universe:                 str            = "—"
+    expected_count:           int            = 0
+    min_valid_required:       int            = 0
+
+    actual_loaded:            int            = 0
+    valid_price_rows:         int            = 0
+    missing_price_rows:       int            = 0
+    valid_1d_return_rows:     int            = 0
+    valid_volume_rows:        int            = 0
+    valid_market_cap_rows:    int            = 0
+    valid_sector_rows:        int            = 0
+
+    data_source_prices:       str            = "—"
+    data_source_fundamentals: str            = "—"
+    data_source_news:         str            = "—"
+
+    last_price_fetch:         Optional[datetime] = None
+    last_fundamentals_fetch:  Optional[datetime] = None
+    last_news_fetch:          Optional[datetime] = None
+
+    failed_tickers:           list[str]      = field(default_factory=list)
+
+    # Computed during finalisation
+    passes:                   bool           = False
+    completeness_pct:         float          = 0.0
+    fetch_status:             str            = "Failed"   # Fresh | Delayed | Stale | Failed
+    failure_reasons:          list[str]      = field(default_factory=list)
+
+    # Per-analytic gates (filled by validate_analytic)
+    analytic_status:          dict           = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        for k in ("last_price_fetch", "last_fundamentals_fetch", "last_news_fetch"):
+            v = d.get(k)
+            d[k] = v.isoformat() if isinstance(v, datetime) else None
+        return d
+
+
+# ── Builders ──────────────────────────────────────────────────────────────────
+
+def _classify_freshness(ts: Optional[datetime]) -> str:
+    """Map a timestamp to Fresh/Delayed/Stale/Failed."""
+    if ts is None:
+        return "Failed"
+    age = datetime.now() - ts
+    if age <= timedelta(hours=FRESHNESS["fresh"]):
+        return "Fresh"
+    if age <= timedelta(hours=FRESHNESS["delayed"]):
+        return "Delayed"
+    if age <= timedelta(hours=FRESHNESS["stale"]):
+        return "Stale"
+    return "Stale"
+
+
+def _safe_count_valid(s: pd.Series) -> int:
+    if s is None or len(s) == 0:
+        return 0
+    return int(s.notna().sum())
+
+
+def build_universe_report(
+    universe_label: str,
+    universe_df: pd.DataFrame,
+    prices_df: Optional[pd.DataFrame] = None,
+    fundamentals_df: Optional[pd.DataFrame] = None,
+    news_df: Optional[pd.DataFrame] = None,
+    failed_tickers: Optional[list[str]] = None,
+    source_prices: str = "—",
+    source_fundamentals: str = "—",
+    source_news: str = "—",
+) -> UniverseReport:
+    """
+    Compute a UniverseReport from the currently-loaded data.
+
+    The caller passes whatever DataFrames it has. Anything missing
+    is treated as zero — we never inflate completeness.
+    """
+    spec = UNIVERSE_SPECS.get(universe_label, {"expected": 0, "min_valid": 0})
+    rep = UniverseReport(
+        universe=universe_label,
+        expected_count=spec["expected"],
+        min_valid_required=spec["min_valid"],
+    )
+
+    # Universe count
+    if universe_df is not None and not universe_df.empty:
+        rep.actual_loaded = len(universe_df)
+        if "sector" in universe_df.columns:
+            rep.valid_sector_rows = _safe_count_valid(universe_df["sector"])
+
+    # Price-derived counts (one row per ticker = latest)
+    if prices_df is not None and not prices_df.empty:
+        latest = (
+            prices_df.sort_values("date").groupby("ticker").tail(1)
+            if "date" in prices_df.columns else prices_df
+        )
+        rep.valid_price_rows      = _safe_count_valid(latest.get("close", pd.Series()))
+        rep.missing_price_rows    = max(0, rep.actual_loaded - rep.valid_price_rows)
+        rep.valid_1d_return_rows  = _safe_count_valid(latest.get("return_1d", pd.Series()))
+        rep.valid_volume_rows     = _safe_count_valid(latest.get("volume", pd.Series()))
+        if "date" in prices_df.columns:
+            ts = pd.to_datetime(prices_df["date"], errors="coerce").max()
+            rep.last_price_fetch  = ts.to_pydatetime() if pd.notna(ts) else None
+
+    if fundamentals_df is not None and not fundamentals_df.empty:
+        rep.valid_market_cap_rows = _safe_count_valid(fundamentals_df.get("market_cap_cr", pd.Series()))
+        if "as_of_date" in fundamentals_df.columns:
+            ts = pd.to_datetime(fundamentals_df["as_of_date"], errors="coerce").max()
+            rep.last_fundamentals_fetch = ts.to_pydatetime() if pd.notna(ts) else None
+
+    if news_df is not None and not news_df.empty and "date" in news_df.columns:
+        ts = pd.to_datetime(news_df["date"], errors="coerce").max()
+        rep.last_news_fetch = ts.to_pydatetime() if pd.notna(ts) else None
+
+    rep.data_source_prices       = source_prices
+    rep.data_source_fundamentals = source_fundamentals
+    rep.data_source_news         = source_news
+    rep.failed_tickers           = list(failed_tickers or [])
+
+    # ── Pass / fail logic ────────────────────────────────────────────────
+    reasons: list[str] = []
+
+    if rep.actual_loaded < rep.min_valid_required:
+        reasons.append(
+            f"Universe size {rep.actual_loaded} below required "
+            f"{rep.min_valid_required} for {universe_label}."
+        )
+    if rep.valid_1d_return_rows < int(0.50 * rep.actual_loaded):
+        reasons.append(
+            f"Only {rep.valid_1d_return_rows} valid 1D returns out of "
+            f"{rep.actual_loaded} loaded — price feed unreliable."
+        )
+    if rep.last_price_fetch is None:
+        reasons.append("No price-fetch timestamp on record.")
+
+    rep.completeness_pct = (
+        100.0 * rep.valid_price_rows / rep.expected_count
+        if rep.expected_count > 0 else 0.0
+    )
+    rep.fetch_status   = _classify_freshness(rep.last_price_fetch)
+    rep.failure_reasons = reasons
+    rep.passes         = (len(reasons) == 0)
+
+    # Per-analytic gates
+    base = max(rep.actual_loaded, 1)
+    rep.analytic_status = {
+        "breadth":        rep.valid_1d_return_rows / base >= ANALYTIC_GATES["breadth"]
+                          and rep.passes,
+        "top_movers":     rep.valid_1d_return_rows / base >= ANALYTIC_GATES["top_movers"]
+                          and rep.passes,
+        "volume_shocks":  rep.valid_volume_rows    / base >= ANALYTIC_GATES["volume_shocks"]
+                          and rep.passes,
+        "52w_extremes":   rep.valid_price_rows     / base >= ANALYTIC_GATES["52w_extremes"]
+                          and rep.passes,
+        "sector_heatmap": (rep.valid_sector_rows   / base >= ANALYTIC_GATES["sector_heatmap"]
+                          and rep.valid_1d_return_rows / base >= ANALYTIC_GATES["sector_heatmap"]
+                          and rep.passes),
+        "ai_summary":     rep.valid_1d_return_rows / base >= ANALYTIC_GATES["ai_summary"]
+                          and rep.passes,
+    }
+
+    return rep
+
+
+# ── Convenience gates for callers ─────────────────────────────────────────────
+
+def gate(rep: UniverseReport, analytic: str) -> bool:
+    """Single source of truth — should this analytic render?"""
+    return bool(rep.analytic_status.get(analytic, False))
+
+
+# ── Display helpers ───────────────────────────────────────────────────────────
+
+_STATUS_COLOR = {
+    "Fresh":   ("#16a34a", "#052e16"),
+    "Delayed": ("#d97706", "#1c1100"),
+    "Stale":   ("#dc2626", "#450a0a"),
+    "Failed":  ("#dc2626", "#450a0a"),
+}
+
+
+def render_data_quality_panel(rep: UniverseReport, compact: bool = False) -> None:
+    """
+    Render the Data Quality Panel.
+    `compact=True` is the sidebar form; False is the full Command Center banner.
+    """
+    fg, bg = _STATUS_COLOR.get(rep.fetch_status, ("#dc2626", "#450a0a"))
+
+    if compact:
+        # Sidebar mini-panel
+        rows = "".join([
+            f'<div style="display:flex;justify-content:space-between;font-size:0.66rem;'
+            f'color:#64748b;margin-top:0.15rem;">'
+            f'<span>{k}</span><span style="color:#94a3b8;font-family:\'IBM Plex Mono\',monospace;">{v}</span></div>'
+            for k, v in [
+                ("Universe",      rep.universe),
+                ("Loaded",        f"{rep.actual_loaded}/{rep.expected_count}"),
+                ("Valid prices",  str(rep.valid_price_rows)),
+                ("Valid 1D ret",  str(rep.valid_1d_return_rows)),
+                ("Completeness",  f"{rep.completeness_pct:.0f}%"),
+                ("Price source",  rep.data_source_prices),
+                ("Last fetch",    rep.last_price_fetch.strftime("%d %b %H:%M")
+                                  if rep.last_price_fetch else "—"),
+            ]
+        ])
+        st.markdown(
+            f"""<div style="
+                background:{bg}; border:1px solid {fg}33;
+                border-left:3px solid {fg}; border-radius:5px;
+                padding:0.65rem 0.8rem; margin-top:0.5rem;
+            ">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.61rem;font-weight:700;letter-spacing:0.1em;
+                             text-transform:uppercase;color:{fg};">Data Quality</span>
+                <span style="font-size:0.62rem;font-weight:700;color:{fg};
+                             font-family:'IBM Plex Mono',monospace;">{rep.fetch_status.upper()}</span>
+              </div>
+              {rows}
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        return
+
+    # Full banner
+    fail_html = ""
+    if not rep.passes:
+        items = "".join(
+            f"<li style='margin-bottom:0.2rem;'>{r}</li>" for r in rep.failure_reasons
+        )
+        fail_html = (
+            f'<ul style="margin:0.5rem 0 0 1.2rem;color:#fca5a5;font-size:0.78rem;'
+            f'line-height:1.5;">{items}</ul>'
+            '<div style="margin-top:0.5rem;font-size:0.74rem;color:#fbbf24;">'
+            'Analytics disabled until data quality passes.</div>'
+        )
+
+    timestamps = "".join([
+        f'<div style="display:flex;flex-direction:column;gap:0.1rem;">'
+        f'<span style="font-size:0.6rem;letter-spacing:0.1em;color:#3d5270;'
+        f'text-transform:uppercase;font-weight:700;">{k}</span>'
+        f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.74rem;color:#94a3b8;">'
+        f'{v}</span></div>'
+        for k, v in [
+            ("Universe",
+             f"{rep.universe} ({rep.actual_loaded}/{rep.expected_count})"),
+            ("Completeness",
+             f"{rep.completeness_pct:.1f}%"),
+            ("Price source",
+             rep.data_source_prices),
+            ("Last price",
+             rep.last_price_fetch.strftime("%d %b %Y %H:%M") if rep.last_price_fetch else "—"),
+            ("Last fundamentals",
+             rep.last_fundamentals_fetch.strftime("%d %b %Y") if rep.last_fundamentals_fetch else "—"),
+            ("Last news",
+             rep.last_news_fetch.strftime("%d %b %H:%M") if rep.last_news_fetch else "—"),
+        ]
+    ])
+
+    st.markdown(
+        f"""<div style="
+            background:{bg}; border:1px solid {fg}55;
+            border-left:4px solid {fg}; border-radius:6px;
+            padding:1rem 1.25rem; margin-bottom:1.25rem;
+        ">
+          <div style="display:flex;justify-content:space-between;align-items:center;
+                      margin-bottom:0.6rem;">
+            <div>
+              <span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;
+                           color:{fg};text-transform:uppercase;">Data Quality</span>
+              <span style="font-size:0.95rem;font-weight:600;color:{fg};margin-left:0.65rem;
+                           font-family:'IBM Plex Mono',monospace;">{rep.fetch_status.upper()}</span>
+            </div>
+            <div style="font-size:0.66rem;color:#3d5270;font-family:'IBM Plex Mono',monospace;">
+              {len(rep.failed_tickers)} failed tickers
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;">
+            {timestamps}
+          </div>
+          {fail_html}
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+
+def append_quality_log(rep: UniverseReport, log_path: Path) -> None:
+    """Append a snapshot of the report to data/data_quality_log.csv."""
+    row = {
+        "ts":                     datetime.now().isoformat(timespec="seconds"),
+        "universe":               rep.universe,
+        "expected":               rep.expected_count,
+        "loaded":                 rep.actual_loaded,
+        "valid_prices":           rep.valid_price_rows,
+        "valid_returns":          rep.valid_1d_return_rows,
+        "valid_volume":           rep.valid_volume_rows,
+        "valid_mcap":             rep.valid_market_cap_rows,
+        "valid_sectors":          rep.valid_sector_rows,
+        "completeness_pct":       round(rep.completeness_pct, 2),
+        "fetch_status":           rep.fetch_status,
+        "source_prices":          rep.data_source_prices,
+        "source_fundamentals":    rep.data_source_fundamentals,
+        "source_news":            rep.data_source_news,
+        "last_price_fetch":       rep.last_price_fetch.isoformat() if rep.last_price_fetch else "",
+        "passes":                 rep.passes,
+        "failure_reasons":        " | ".join(rep.failure_reasons),
+        "failed_tickers":         ",".join(rep.failed_tickers[:50]),  # cap to avoid bloat
+    }
+    df = pd.DataFrame([row])
+    try:
+        if log_path.exists():
+            df.to_csv(log_path, mode="a", header=False, index=False)
+        else:
+            df.to_csv(log_path, index=False)
+    except Exception:
+        pass  # logging failures must never crash the app

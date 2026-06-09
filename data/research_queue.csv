@@ -1,0 +1,4 @@
+id,date_added,ticker,company_name,sector,why_added,source,priority,status,last_reviewed,next_step,owner,notes
+1,2025-01-23,LT,Larsen & Toubro,Capital Goods,"Order book at Rs 5.6L Cr (2.5x revenue) and accelerating defence inflow","Q3FY25 Concall",High,Reading,2025-01-23,"Build OB-to-revenue conversion model","devalimchandani","High execution visibility but margin compression risk"
+2,2025-01-23,HAL,Hindustan Aeronautics,Capital Goods,"OB at Rs 95K Cr (12x annual revenue), Tejas + helicopter pipeline","Q3FY25 Press Release",High,Discuss with boss,2025-01-23,"Compare execution cycle vs guidance","devalimchandani",""
+3,2025-01-22,MAZDOCK,Mazagon Dock Shipbuilders,Capital Goods,"Project 75 follow-on order win expected, OB strong","NSE Filing 2025-01-15",Medium,New,,"Read latest IP","devalimchandani",""

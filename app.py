@@ -60,11 +60,18 @@ st.markdown(
             </div>
           </div>
           <div style="text-align:right;">
-            <div class="status-dot" style="justify-content:flex-end;">System Online</div>
+            <div style="font-size:0.62rem;color:#3d5270;
+                        font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;">
+              PAGE RENDERED
+            </div>
             <div style="
-              font-family:'IBM Plex Mono',monospace; font-size:0.65rem;
-              color: #141e30; margin-top: 0.4rem;
+              font-family:'IBM Plex Mono',monospace; font-size:0.78rem;
+              color: #94a3b8; margin-top: 0.15rem;
             ">{today.strftime("%H:%M IST")}</div>
+            <div style="font-size:0.6rem;color:#2d3f5a;margin-top:0.25rem;
+                        font-family:'IBM Plex Mono',monospace;">
+              Open Command Center for data freshness
+            </div>
           </div>
         </div>
         <div style="height:1px;background:linear-gradient(90deg,#1e2d45 0%,#0f1929 60%,transparent 100%);margin-bottom:1.75rem;"></div>

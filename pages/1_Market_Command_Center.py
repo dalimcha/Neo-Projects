@@ -25,101 +25,171 @@ from utils.data_loader import (
 )
 from utils.nse_fetcher import fetch_index_snapshot, fetch_bhavcopy
 from utils.charting import sector_heatmap, _empty_chart
+from utils.validation import (
+    build_universe_report, render_data_quality_panel, gate,
+    UNIVERSE_SPECS, append_quality_log,
+)
+from utils.data_loader import DATA as DATA_DIR
 import utils.ai_summarizer as ai
 
 inject_css()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="sec-label">Filters</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-label">Universe</div>', unsafe_allow_html=True)
     index_filter = st.selectbox(
-        "Index Universe",
-        ["Nifty 500", "Nifty 50", "Nifty Next 50", "All"],
-        index=0,
+        "Selected Universe",
+        list(UNIVERSE_SPECS.keys()) + ["All"],
+        index=2,    # default Nifty 500
     )
     n_movers = st.slider("Movers to Show", 5, 20, 10)
     st.markdown("---")
     refresh = st.button("Refresh Data")
 
-page_header("Market Command Center", "Live market pulse and daily brief")
+# Page header gets real freshness — wired in once we've built the universe report.
+# Stub for now; the real call happens after build_universe_report().
+page_header("Market Command Center", "Daily market pulse")
 
 # ── Index Snapshot ────────────────────────────────────────────────────────────
 section_label("Index Snapshot")
 
 with st.spinner("Fetching index data…"):
     try:
-        indices = fetch_index_snapshot()
+        indices = fetch_index_snapshot() or {}
     except Exception:
         indices = {}
 
+# Source per index — sensex is hidden if not present (don't show blank card)
 INDEX_CONFIG = [
-    ("nifty50",    "Nifty 50"),
-    ("niftyNext50","Nifty Next 50"),
-    ("nifty500",   "Nifty 500"),
-    ("bankNifty",  "Bank Nifty"),
-    ("vix",        "India VIX"),
-    ("sensex",     "Sensex"),
+    ("nifty50",     "Nifty 50",      "NSE"),
+    ("niftyNext50", "Nifty Next 50", "NSE"),
+    ("nifty500",    "Nifty 500",     "NSE"),
+    ("bankNifty",   "Bank Nifty",    "NSE"),
+    ("vix",         "India VIX",     "NSE"),
+    ("sensex",      "Sensex",        "BSE"),
 ]
 
-idx_cols = st.columns(len(INDEX_CONFIG))
-for col, (key, label) in zip(idx_cols, INDEX_CONFIG):
-    with col:
-        if key in indices:
+# Filter out indices we have no data for, rather than show empty cards
+visible = [
+    (k, lbl, src) for (k, lbl, src) in INDEX_CONFIG
+    if k in indices and indices[k].get("value") is not None
+]
+
+# If NOTHING fetched, show one banner instead of 6 empty cards
+if not visible:
+    warn_block(
+        "No index data available. "
+        "NSE / BSE feeds returned no values. "
+        "Indices will populate once the fetcher reaches the API "
+        "(blocked during off-hours or by Cloudflare on Streamlit Cloud)."
+    )
+else:
+    idx_ts = datetime.now().strftime("%d %b %H:%M")
+    idx_cols = st.columns(len(visible))
+    for col, (key, label, source) in zip(idx_cols, visible):
+        with col:
             d = indices[key]
-            val = d["value"]
-            chg = d["change_pct"]
-            pts = d["change"]
+            val   = d.get("value")
+            chg   = d.get("change_pct", 0) or 0
+            pts   = d.get("change", 0) or 0
             is_up = None if key == "vix" else (chg >= 0)
             index_card(
-                name=label,
-                value=f"{val:,.2f}",
-                change=f"{chg:+.2f}%",
-                pts=f"({pts:+.0f})",
-                is_up=is_up,
+                name    = label,
+                value   = f"{val:,.2f}",
+                change  = f"{chg:+.2f}%",
+                pts     = f"({pts:+.0f})",
+                is_up   = is_up,
+                source  = source,
+                data_ts = idx_ts,
             )
-        else:
-            index_card(label, "—", "—", "", None)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Breadth KPIs ──────────────────────────────────────────────────────────────
-section_label("Market Breadth")
-
+# ── Data Quality Gate ─────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def _get_universe():
     return load_full_universe()
 
 df = _get_universe()
 
-# Apply index filter
+# Apply universe filter
 if not df.empty and "index_membership" in df.columns and index_filter != "All":
     df = df[df["index_membership"].str.contains(index_filter.replace(" ",""), na=False)]
 
-if not df.empty and "return_1d" in df.columns:
-    d_col = df["return_1d"].dropna()
-    advancers  = (d_col > 0).sum()
-    decliners  = (d_col < 0).sum()
-    unchanged  = (d_col == 0).sum()
-    avg_ret    = d_col.mean() * 100
-    ad_ratio   = advancers / decliners if decliners > 0 else float("inf")
-    n_52h = (df.get("dist_52w_high_pct", pd.Series(dtype=float)).abs() < 3).sum() if "dist_52w_high_pct" in df.columns else 0
-    n_52l = (df.get("dist_52w_low_pct", pd.Series(dtype=float)).abs() < 3).sum() if "dist_52w_low_pct" in df.columns else 0
-else:
-    advancers = decliners = unchanged = n_52h = n_52l = 0
-    avg_ret = ad_ratio = 0.0
+# Build the universe report — this drives EVERY downstream gate
+from utils.data_loader import load_prices, load_fundamentals
+quality_report = build_universe_report(
+    universe_label      = index_filter if index_filter in UNIVERSE_SPECS else "Nifty 500",
+    universe_df         = df,
+    prices_df           = load_prices(),
+    fundamentals_df     = load_fundamentals(),
+    news_df             = load_news(),
+    source_prices       = "NSE Bhavcopy / yfinance",
+    source_fundamentals = "Screener.in (manual)",
+    source_news         = "NSE Corp Announcements",
+)
+append_quality_log(quality_report, DATA_DIR / "data_quality_log.csv")
 
-kpi_cols = st.columns(6)
-kpi_data = [
-    ("Advancers",      str(advancers),             f"{advancers/(advancers+decliners+1)*100:.0f}% of universe",  True  if advancers > decliners else None),
-    ("Decliners",      str(decliners),             "",                                                            False if advancers > decliners else None),
-    ("A/D Ratio",      f"{ad_ratio:.2f}x",         "Advancers ÷ Decliners",                                       ad_ratio >= 1),
-    ("Avg 1D Return",  fmt_pct(avg_ret),           "",                                                            avg_ret >= 0),
-    ("Near 52W High",  str(n_52h),                 "Within 3% of 52W high",                                       None),
-    ("Near 52W Low",   str(n_52l),                 "Within 3% of 52W low",                                        None),
-]
-for col, (lbl, val, sub, pos) in zip(kpi_cols, kpi_data):
-    with col:
-        kpi_card(lbl, val, sub, delta_pos=pos)
+render_data_quality_panel(quality_report, compact=False)
+
+# Sidebar mini-panel too
+with st.sidebar:
+    render_data_quality_panel(quality_report, compact=True)
+
+# ── Breadth KPIs (gated) ──────────────────────────────────────────────────────
+section_label("Market Breadth")
+
+if not gate(quality_report, "breadth"):
+    warn_block(
+        "Market breadth cannot be computed — universe completeness below 90%. "
+        "Run scripts/update_prices.py to refresh the price feed."
+    )
+else:
+    d_col = df["return_1d"].dropna()
+    advancers = int((d_col > 0).sum())
+    decliners = int((d_col < 0).sum())
+    unchanged = int((d_col == 0).sum())
+    total     = advancers + decliners + unchanged
+
+    # ── Bug fix: never produce inf ────────────────────────────────────────
+    if decliners == 0:
+        ad_ratio_str = "N/A"
+    else:
+        ad_ratio_str = f"{advancers / decliners:.2f}x"
+
+    avg_ret_pct = float(d_col.mean()) * (100 if d_col.abs().max() < 1 else 1)
+
+    # 52W proximity counts — only if we have those columns
+    if "dist_52w_high_pct" in df.columns:
+        n_52h = int((df["dist_52w_high_pct"].abs() < 3).sum())
+    else:
+        n_52h = None
+    if "dist_52w_low_pct" in df.columns:
+        n_52l = int((df["dist_52w_low_pct"].abs() < 3).sum())
+    else:
+        n_52l = None
+
+    pct_pos = (advancers / total * 100) if total > 0 else None
+
+    kpi_cols = st.columns(6)
+    kpi_data = [
+        ("Advancers",     str(advancers),
+         f"{pct_pos:.0f}% positive" if pct_pos is not None else "",
+         advancers > decliners),
+        ("Decliners",     str(decliners), "",
+         False if advancers > decliners else None),
+        ("A/D Ratio",     ad_ratio_str, "Advancers ÷ Decliners",
+         decliners > 0 and advancers >= decliners),
+        ("Avg 1D Return", f"{avg_ret_pct:+.2f}%" if total else "N/A", "",
+         avg_ret_pct >= 0),
+        ("Near 52W High", str(n_52h) if n_52h is not None else "N/A",
+         "Within 3% of 52W high", None),
+        ("Near 52W Low",  str(n_52l) if n_52l is not None else "N/A",
+         "Within 3% of 52W low",  None),
+    ]
+    for col, (lbl, val, sub, pos) in zip(kpi_cols, kpi_data):
+        with col:
+            kpi_card(lbl, val, sub, delta_pos=pos)
 
 st.markdown("<br>", unsafe_allow_html=True)
 

@@ -408,8 +408,9 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
 }
 .idx-val {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.5rem; font-weight: 600; color: #e2e8f0;
+    font-size: 1.4rem; font-weight: 600; color: #e2e8f0;
     letter-spacing: -0.03em; line-height: 1.15;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .idx-chg {
     font-family: 'IBM Plex Mono', monospace; font-size: 0.77rem; font-weight: 500;
@@ -858,18 +859,58 @@ def sentiment_badge(sentiment: str) -> str:
 
 # ── Streamlit component wrappers ──────────────────────────────────────────────
 
-def page_header(title: str, subtitle: str = "", ts: bool = True) -> None:
+def page_header(
+    title: str,
+    subtitle: str = "",
+    ts: bool = True,
+    data_status: str | None = None,
+    data_ts: str | None = None,
+) -> None:
+    """
+    Render the page header.
+
+    `data_status` may be "Fresh" | "Delayed" | "Stale" | "Failed" | None.
+    When None (default), no status dot is shown — never lie about freshness.
+    `data_ts` is the data-as-of timestamp (distinct from page render time).
+    """
     now_str = datetime.now().strftime("%d %b %Y  %H:%M") if ts else ""
     sub_html = f'<span class="pg-subtitle">{subtitle}</span>' if subtitle else ""
-    dot_html = '<span class="status-dot">Live</span>'
+
+    # Status dot: only show when caller passes real data freshness
+    dot_html = ""
+    if data_status:
+        colour = {
+            "Fresh":   "#22c55e",
+            "Delayed": "#f59e0b",
+            "Stale":   "#ef4444",
+            "Failed":  "#ef4444",
+        }.get(data_status, "#64748b")
+        dot_html = (
+            f'<span style="display:inline-flex;align-items:center;gap:5px;'
+            f'font-size:0.62rem;color:{colour};font-family:\'IBM Plex Mono\',monospace;">'
+            f'<span style="width:5px;height:5px;border-radius:50%;background:{colour};'
+            f'box-shadow:0 0 5px {colour}99;"></span>Data: {data_status}</span>'
+        )
+
+    data_ts_html = (
+        f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.62rem;'
+        f'color:#3d5270;margin-top:2px;">Data as of {data_ts}</div>'
+        if data_ts else ""
+    )
+    page_ts_html = (
+        f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.62rem;'
+        f'color:#2d3f5a;margin-top:2px;">Page rendered {now_str}</div>'
+    )
+
     st.markdown(
         f"""<div class="pg-header">
               <div style="display:flex;align-items:baseline;gap:0.1rem;flex-wrap:wrap;">
                 <span class="pg-title">{title}</span>{sub_html}
               </div>
-              <div style="display:flex;align-items:center;gap:1rem;">
+              <div style="text-align:right;">
                 {dot_html}
-                <span class="pg-ts">{now_str}</span>
+                {data_ts_html}
+                {page_ts_html}
               </div>
             </div>""",
         unsafe_allow_html=True,
@@ -896,14 +937,54 @@ def kpi_card(label: str, value: str, delta: str = "", delta_pos: bool | None = N
     )
 
 
-def index_card(name: str, value: str, change: str, pts: str, is_up: bool | None) -> None:
+def index_card(
+    name: str, value: str, change: str, pts: str,
+    is_up: bool | None,
+    source: str = "",
+    data_ts: str = "",
+) -> None:
+    """
+    Index ticker card.
+
+    Renders 'N/A' cleanly when value is missing. Never shows fake change %%
+    when value is missing.
+    """
+    missing = (value in ("", "—", None) or value == "N/A")
+
     cls     = "pos" if is_up else ("neg" if is_up is False else "neu")
     dir_cls = "idx-up" if is_up else ("idx-dn" if is_up is False else "")
+
+    if missing:
+        val_html = ('<div class="idx-val" style="color:#3d5270;font-size:1rem;">'
+                    'N/A</div>')
+        chg_html = ('<div class="idx-chg neu" style="color:#3d5270;">'
+                    'Data not available</div>')
+        dir_cls = ""
+    else:
+        val_html = f'<div class="idx-val">{value}</div>'
+        chg_html = (
+            f'<div class="idx-chg {cls}">'
+            f'<span>{change}</span>'
+            f'&nbsp;<span style="color:#3d5270;">{pts}</span>'
+            f'</div>'
+        )
+
+    src_html = ""
+    if source or data_ts:
+        src_html = (
+            f'<div style="font-size:0.58rem;color:#2d3f5a;margin-top:0.3rem;'
+            f'font-family:\'IBM Plex Mono\',monospace;letter-spacing:0.02em;'
+            f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+            f'{source}{" · " if source and data_ts else ""}{data_ts}'
+            f'</div>'
+        )
+
     st.markdown(
         f"""<div class="idx-bar {dir_cls}">
               <div class="idx-name">{name}</div>
-              <div class="idx-val">{value}</div>
-              <div class="idx-chg {cls}">{change} &nbsp; {pts}</div>
+              {val_html}
+              {chg_html}
+              {src_html}
             </div>""",
         unsafe_allow_html=True,
     )
