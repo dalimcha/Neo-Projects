@@ -1,0 +1,136 @@
+ticker,company_name,sector,industry,index_membership,isin,bse_code,nse_code
+RELIANCE,Reliance Industries Ltd,Oil Gas & Consumable Fuels,Diversified Oil & Gas,Nifty50|Nifty500,INE002A01018,500325,RELIANCE
+TCS,Tata Consultancy Services Ltd,Information Technology,IT Services,Nifty50|Nifty500,INE467B01029,532540,TCS
+HDFCBANK,HDFC Bank Ltd,Financial Services,Banks - Private,Nifty50|Nifty500,INE040A01034,500180,HDFCBANK
+INFY,Infosys Ltd,Information Technology,IT Services,Nifty50|Nifty500,INE009A01021,500209,INFY
+ICICIBANK,ICICI Bank Ltd,Financial Services,Banks - Private,Nifty50|Nifty500,INE090A01021,532174,ICICIBANK
+HINDUNILVR,Hindustan Unilever Ltd,Fast Moving Consumer Goods,FMCG,Nifty50|Nifty500,INE030A01027,500696,HINDUNILVR
+ITC,ITC Ltd,Fast Moving Consumer Goods,FMCG - Tobacco,Nifty50|Nifty500,INE154A01025,500875,ITC
+KOTAKBANK,Kotak Mahindra Bank Ltd,Financial Services,Banks - Private,Nifty50|Nifty500,INE237A01028,500247,KOTAKBANK
+LT,Larsen & Toubro Ltd,Capital Goods,Construction & Engineering,Nifty50|Nifty500,INE018A01030,500510,LT
+AXISBANK,Axis Bank Ltd,Financial Services,Banks - Private,Nifty50|Nifty500,INE238A01034,532215,AXISBANK
+BAJFINANCE,Bajaj Finance Ltd,Financial Services,NBFC,Nifty50|Nifty500,INE296A01024,500034,BAJFINANCE
+WIPRO,Wipro Ltd,Information Technology,IT Services,Nifty50|Nifty500,INE075A01022,507685,WIPRO
+HCLTECH,HCL Technologies Ltd,Information Technology,IT Services,Nifty50|Nifty500,INE860A01027,532281,HCLTECH
+ASIANPAINT,Asian Paints Ltd,Consumer Durables,Paints & Coatings,Nifty50|Nifty500,INE021A01026,500820,ASIANPAINT
+MARUTI,Maruti Suzuki India Ltd,Automobile and Auto Components,Passenger Vehicles,Nifty50|Nifty500,INE585B01010,532500,MARUTI
+TATAMOTORS,Tata Motors Ltd,Automobile and Auto Components,Diversified Vehicles,Nifty50|Nifty500,INE155A01022,500570,TATAMOTORS
+BAJAJFINSV,Bajaj Finserv Ltd,Financial Services,Financial Holding,Nifty50|Nifty500,INE918I01026,532978,BAJAJFINSV
+SUNPHARMA,Sun Pharmaceutical Industries Ltd,Healthcare,Pharmaceuticals,Nifty50|Nifty500,INE044A01036,524715,SUNPHARMA
+BHARTIARTL,Bharti Airtel Ltd,Telecommunication,Telecom Services,Nifty50|Nifty500,INE397D01024,532454,BHARTIARTL
+SBIN,State Bank of India,Financial Services,Banks - Public,Nifty50|Nifty500,INE062A01020,500112,SBIN
+NTPC,NTPC Ltd,Power,Power Generation,Nifty50|Nifty500,INE733E01010,532555,NTPC
+ADANIPORTS,Adani Ports and SEZ Ltd,Services,Port & Logistics,Nifty50|Nifty500,INE742F01042,532921,ADANIPORTS
+ULTRACEMCO,UltraTech Cement Ltd,Construction Materials,Cement,Nifty50|Nifty500,INE481G01011,532538,ULTRACEMCO
+POWERGRID,Power Grid Corporation of India Ltd,Power,Power Transmission,Nifty50|Nifty500,INE752E01010,532898,POWERGRID
+TATACONSUM,Tata Consumer Products Ltd,Fast Moving Consumer Goods,FMCG,Nifty50|Nifty500,INE192A01025,500800,TATACONSUM
+M&M,Mahindra & Mahindra Ltd,Automobile and Auto Components,Diversified Vehicles,Nifty50|Nifty500,INE101A01026,500520,M&M
+NESTLEIND,Nestle India Ltd,Fast Moving Consumer Goods,FMCG - Food,Nifty50|Nifty500,INE239A01016,500790,NESTLEIND
+TATASTEEL,Tata Steel Ltd,Metals & Mining,Steel,Nifty50|Nifty500,INE081A01012,500470,TATASTEEL
+TITAN,Titan Company Ltd,Consumer Durables,Jewellery,Nifty50|Nifty500,INE280A01028,500114,TITAN
+HINDALCO,Hindalco Industries Ltd,Metals & Mining,Aluminium,Nifty50|Nifty500,INE038A01020,500440,HINDALCO
+DRREDDY,Dr. Reddy's Laboratories Ltd,Healthcare,Pharmaceuticals,Nifty50|Nifty500,INE089A01023,500124,DRREDDY
+DIVISLAB,Divi's Laboratories Ltd,Healthcare,Pharmaceuticals - API,Nifty50|Nifty500,INE361B01024,532488,DIVISLAB
+CIPLA,Cipla Ltd,Healthcare,Pharmaceuticals,Nifty50|Nifty500,INE059A01026,500087,CIPLA
+BEL,Bharat Electronics Ltd,Capital Goods,Defence Electronics,Nifty50|Nifty500,INE263A01024,500049,BEL
+COALINDIA,Coal India Ltd,Metals & Mining,Coal Mining,Nifty50|Nifty500,INE522F01014,533278,COALINDIA
+ONGC,Oil & Natural Gas Corporation Ltd,Oil Gas & Consumable Fuels,Upstream Oil & Gas,Nifty50|Nifty500,INE213A01029,500312,ONGC
+EICHERMOT,Eicher Motors Ltd,Automobile and Auto Components,Two & Three Wheelers,Nifty50|Nifty500,INE066A01021,505200,EICHERMOT
+BAJAJ-AUTO,Bajaj Auto Ltd,Automobile and Auto Components,Two & Three Wheelers,Nifty50|Nifty500,INE917I01010,532977,BAJAJ-AUTO
+HEROMOTOCO,Hero MotoCorp Ltd,Automobile and Auto Components,Two & Three Wheelers,Nifty50|Nifty500,INE158A01026,500182,HEROMOTOCO
+JSWSTEEL,JSW Steel Ltd,Metals & Mining,Steel,Nifty50|Nifty500,INE019A01038,500228,JSWSTEEL
+GRASIM,Grasim Industries Ltd,Construction Materials,Diversified Industrials,Nifty50|Nifty500,INE047A01021,500300,GRASIM
+HDFCLIFE,HDFC Life Insurance Company Ltd,Financial Services,Life Insurance,Nifty50|Nifty500,INE795G01014,540777,HDFCLIFE
+SBILIFE,SBI Life Insurance Company Ltd,Financial Services,Life Insurance,Nifty50|Nifty500,INE123W01016,540628,SBILIFE
+BPCL,Bharat Petroleum Corporation Ltd,Oil Gas & Consumable Fuels,Downstream Oil & Gas,Nifty50|Nifty500,INE029A01011,500547,BPCL
+APOLLOHOSP,Apollo Hospitals Enterprise Ltd,Healthcare,Hospitals,Nifty50|Nifty500,INE437A01024,508869,APOLLOHOSP
+SHREECEM,Shree Cement Ltd,Construction Materials,Cement,NiftyNext50|Nifty500,INE070A01015,500387,SHREECEM
+TECHM,Tech Mahindra Ltd,Information Technology,IT Services,Nifty50|Nifty500,INE669C01036,532755,TECHM
+TATAPOWER,Tata Power Company Ltd,Power,Power Generation & Distribution,NiftyNext50|Nifty500,INE245A01021,500400,TATAPOWER
+ABB,ABB India Ltd,Capital Goods,Industrial Automation,NiftyNext50|Nifty500,INE117A01022,500002,ABB
+SIEMENS,Siemens Ltd,Capital Goods,Industrial Automation,NiftyNext50|Nifty500,INE003A01024,500550,SIEMENS
+THERMAX,Thermax Ltd,Capital Goods,Industrial Boilers & Process,NiftyNext50|Nifty500,INE152A01029,500411,THERMAX
+HAL,Hindustan Aeronautics Ltd,Capital Goods,Defence Aerospace,Nifty50|Nifty500,INE066F01012,541154,HAL
+BHEL,Bharat Heavy Electricals Ltd,Capital Goods,Power Equipment,NiftyNext50|Nifty500,INE257A01026,500103,BHEL
+RVNL,Rail Vikas Nigam Ltd,Capital Goods,Railways EPC,NiftyNext50|Nifty500,INE415G01027,542649,RVNL
+IRCON,Ircon International Ltd,Capital Goods,Railways EPC,NiftyNext50|Nifty500,INE962Y01021,541956,IRCON
+NBCC,NBCC (India) Ltd,Capital Goods,Real Estate / Infra,Nifty500,INE095N01031,534309,NBCC
+KEC,KEC International Ltd,Capital Goods,Power T&D EPC,NiftyNext50|Nifty500,INE389H01022,532714,KEC
+KPIL,Kalpataru Projects International Ltd,Capital Goods,Infra & Power T&D EPC,NiftyNext50|Nifty500,INE220B01022,522287,KPIL
+GRSE,Garden Reach Shipbuilders & Engineers Ltd,Capital Goods,Defence Shipbuilding,Nifty500,INE382Z01011,542011,GRSE
+MAZDOCK,Mazagon Dock Shipbuilders Ltd,Capital Goods,Defence Shipbuilding,Nifty500,INE249Z01012,543237,MAZDOCK
+COCHINSHIP,Cochin Shipyard Ltd,Capital Goods,Shipbuilding,Nifty500,INE704P01017,540678,COCHINSHIP
+BEML,BEML Ltd,Capital Goods,Defence & Mining Equipment,Nifty500,INE258A01016,500048,BEML
+MTAR,MTAR Technologies Ltd,Capital Goods,Defence & Space,Nifty500,INE776G01017,543266,MTAR
+DATAPATT,Data Patterns (India) Ltd,Capital Goods,Defence Electronics,Nifty500,INE0IX01010,543428,DATAPATT
+PARAS,Paras Defence and Space Technologies Ltd,Capital Goods,Defence Components,Nifty500,INE0DV01021,543367,PARAS
+ZENTEC,Zen Technologies Ltd,Capital Goods,Defence Training,Nifty500,INE0IW01018,533339,ZENTEC
+DIXON,Dixon Technologies (India) Ltd,Capital Goods,EMS,NiftyNext50|Nifty500,INE935N01020,540699,DIXON
+KAYNES,Kaynes Technology India Ltd,Capital Goods,EMS,NiftyNext50|Nifty500,INE0MU01018,543664,KAYNES
+SYRMA,Syrma SGS Technology Ltd,Capital Goods,EMS,Nifty500,INE0D5A01016,543573,SYRMA
+PNC,PNC Infratech Ltd,Capital Goods,Infra EPC,Nifty500,INE195J01029,539150,PNC
+KNRCON,KNR Constructions Ltd,Capital Goods,Infra EPC,Nifty500,INE634I01029,532942,KNRCON
+AHLUCONT,Ahluwalia Contracts (India) Ltd,Capital Goods,Construction EPC,Nifty500,INE758C01029,532811,AHLUCONT
+ITD,ITD Cementation India Ltd,Capital Goods,Marine & Infra EPC,Nifty500,INE686A01017,509496,ITD
+PSPPROJECT,PSP Projects Ltd,Capital Goods,Construction,Nifty500,INE01ZY01018,540544,PSPPROJECT
+LTIM,LTIMindtree Ltd,Information Technology,IT Services,Nifty50|Nifty500,INE214T01019,540005,LTIM
+MPHASIS,Mphasis Ltd,Information Technology,IT Services,NiftyNext50|Nifty500,INE356A01018,526299,MPHASIS
+PERSISTENT,Persistent Systems Ltd,Information Technology,IT Services,NiftyNext50|Nifty500,INE262H01021,533179,PERSISTENT
+COFORGE,Coforge Ltd,Information Technology,IT Services,NiftyNext50|Nifty500,INE591G01017,532541,COFORGE
+KPITTECH,KPIT Technologies Ltd,Information Technology,IT Services - Auto,NiftyNext50|Nifty500,INE00MK01021,542651,KPITTECH
+LUPIN,Lupin Ltd,Healthcare,Pharmaceuticals,NiftyNext50|Nifty500,INE326A01037,500257,LUPIN
+AUROPHARMA,Aurobindo Pharma Ltd,Healthcare,Pharmaceuticals,NiftyNext50|Nifty500,INE406A01037,524804,AUROPHARMA
+TORNTPHARM,Torrent Pharmaceuticals Ltd,Healthcare,Pharmaceuticals,NiftyNext50|Nifty500,INE685A01028,500420,TORNTPHARM
+MAXHEALTH,Max Healthcare Institute Ltd,Healthcare,Hospitals,NiftyNext50|Nifty500,INE027H01010,543220,MAXHEALTH
+FORTIS,Fortis Healthcare Ltd,Healthcare,Hospitals,Nifty500,INE061F01013,532843,FORTIS
+BANKBARODA,Bank of Baroda,Financial Services,Banks - Public,NiftyNext50|Nifty500,INE028A01039,532134,BANKBARODA
+PNB,Punjab National Bank,Financial Services,Banks - Public,NiftyNext50|Nifty500,INE160A01022,532461,PNB
+CANBK,Canara Bank,Financial Services,Banks - Public,NiftyNext50|Nifty500,INE476A01014,532483,CANBK
+INDUSINDBK,IndusInd Bank Ltd,Financial Services,Banks - Private,NiftyNext50|Nifty500,INE095A01012,532187,INDUSINDBK
+FEDERALBNK,The Federal Bank Ltd,Financial Services,Banks - Private,Nifty500,INE171A01029,500469,FEDERALBNK
+MUTHOOTFIN,Muthoot Finance Ltd,Financial Services,NBFC - Gold,NiftyNext50|Nifty500,INE414G01012,533398,MUTHOOTFIN
+CHOLAFIN,Cholamandalam Investment and Finance,Financial Services,NBFC - Vehicle,NiftyNext50|Nifty500,INE121A01024,511243,CHOLAFIN
+DLF,DLF Ltd,Real Estate,Real Estate,NiftyNext50|Nifty500,INE271C01023,532868,DLF
+GODREJPROP,Godrej Properties Ltd,Real Estate,Real Estate,NiftyNext50|Nifty500,INE484J01027,533150,GODREJPROP
+PRESTIGE,Prestige Estates Projects Ltd,Real Estate,Real Estate,Nifty500,INE811K01011,533274,PRESTIGE
+OBEROIRLTY,Oberoi Realty Ltd,Real Estate,Real Estate - Premium,Nifty500,INE093I01010,533273,OBEROIRLTY
+AMBUJACEM,Ambuja Cements Ltd,Construction Materials,Cement,Nifty50|Nifty500,INE079A01024,500425,AMBUJACEM
+ACC,ACC Ltd,Construction Materials,Cement,NiftyNext50|Nifty500,INE012A01025,500410,ACC
+JKCEMENT,JK Cement Ltd,Construction Materials,Cement,Nifty500,INE823G01014,532644,JKCEMENT
+DALMIA,Dalmia Bharat Ltd,Construction Materials,Cement,NiftyNext50|Nifty500,INE00R701025,542216,DALMIA
+VEDL,Vedanta Ltd,Metals & Mining,Diversified Metals,NiftyNext50|Nifty500,INE205A01025,500295,VEDL
+NMDC,NMDC Ltd,Metals & Mining,Iron Ore Mining,Nifty500,INE584A01023,526371,NMDC
+SAIL,Steel Authority of India Ltd,Metals & Mining,Steel,Nifty500,INE114A01011,500113,SAIL
+NATIONALUM,National Aluminium Company Ltd,Metals & Mining,Aluminium,Nifty500,INE139A01034,532234,NATIONALUM
+ADANIENT,Adani Enterprises Ltd,Metals & Mining,Diversified,NiftyNext50|Nifty500,INE423A01024,512599,ADANIENT
+ADANIGREEN,Adani Green Energy Ltd,Power,Renewable Energy,NiftyNext50|Nifty500,INE364U01010,541450,ADANIGREEN
+ADANIENSOL,Adani Energy Solutions Ltd,Power,Power T&D,NiftyNext50|Nifty500,INE931S01010,542066,ADANIENSOL
+ADANIPOWER,Adani Power Ltd,Power,Power Generation,NiftyNext50|Nifty500,INE814H01011,533096,ADANIPOWER
+IOC,Indian Oil Corporation Ltd,Oil Gas & Consumable Fuels,Downstream Oil & Gas,NiftyNext50|Nifty500,INE242A01010,530965,IOC
+HINDPETRO,Hindustan Petroleum Corporation Ltd,Oil Gas & Consumable Fuels,Downstream Oil & Gas,Nifty500,INE094A01015,500104,HINDPETRO
+GAIL,GAIL (India) Ltd,Oil Gas & Consumable Fuels,Gas Transmission,NiftyNext50|Nifty500,INE129A01019,532155,GAIL
+IGL,Indraprastha Gas Ltd,Oil Gas & Consumable Fuels,City Gas Distribution,Nifty500,INE203G01027,532514,IGL
+MGL,Mahanagar Gas Ltd,Oil Gas & Consumable Fuels,City Gas Distribution,Nifty500,INE395I01028,539957,MGL
+INDUSTOWER,Indus Towers Ltd,Telecommunication,Telecom Infrastructure,NiftyNext50|Nifty500,INE121J01017,534816,INDUSTOWER
+PIDILITIND,Pidilite Industries Ltd,Chemicals,Adhesives & Sealants,NiftyNext50|Nifty500,INE318A01026,500331,PIDILITIND
+DEEPAKNITRITE,Deepak Nitrite Ltd,Chemicals,Specialty Chemicals,Nifty500,INE288B01029,506401,DEEPAKNITRITE
+SRF,SRF Ltd,Chemicals,Specialty Chemicals,NiftyNext50|Nifty500,INE647A01010,503806,SRF
+AARTIIND,Aarti Industries Ltd,Chemicals,Specialty Chemicals,Nifty500,INE769A01020,524208,AARTIIND
+NAVINFLUOR,Navin Fluorine International Ltd,Chemicals,Specialty Chemicals,Nifty500,INE048G01026,532504,NAVINFLUOR
+BLUEDART,Blue Dart Express Ltd,Services,Logistics - Express,Nifty500,INE233B01017,526612,BLUEDART
+CONCOR,Container Corporation of India Ltd,Services,Logistics - Rail,NiftyNext50|Nifty500,INE111A01025,531344,CONCOR
+INDHOTEL,The Indian Hotels Company Ltd,Services,Hotels & Hospitality,NiftyNext50|Nifty500,INE053A01029,500850,INDHOTEL
+LEMONTREE,Lemon Tree Hotels Ltd,Services,Hotels - Midscale,Nifty500,INE970X01018,541233,LEMONTREE
+STERLINWIL,Sterling and Wilson Renewable Energy Ltd,Power,Solar EPC,Nifty500,INE00M201021,542760,STERLINWIL
+WAAREE,Waaree Energies Ltd,Power,Solar Manufacturing,Nifty500,INE0POA01011,544170,WAAREE
+SOLARINDS,Solar Industries India Ltd,Capital Goods,Explosives & Defence,NiftyNext50|Nifty500,INE343H01029,532725,SOLARINDS
+TITAGARH,Titagarh Rail Systems Ltd,Capital Goods,Railway Wagons & Components,Nifty500,INE0C3A01010,544070,TITAGARH
+JUPITERWAG,Jupiter Wagons Ltd,Capital Goods,Railway Wagons,Nifty500,INE176B01034,539700,JUPITERWAG
+HFCL,HFCL Ltd,Capital Goods,Telecom Infrastructure & Defence,Nifty500,INE548A01028,500183,HFCL
+NETWORK18,Network18 Media & Investments Ltd,Media,Media Conglomerate,Nifty500,INE870H01013,532798,NETWORK18
+DMART,Avenue Supermarts Ltd,Consumer Services,Retail,NiftyNext50|Nifty500,INE192R01011,540376,DMART
+TRENT,Trent Ltd,Consumer Services,Fashion Retail,NiftyNext50|Nifty500,INE849A01020,500251,TRENT
+ZOMATO,Zomato Ltd,Consumer Services,Food Delivery,NiftyNext50|Nifty500,INE758T01015,543320,ZOMATO
+NYKAA,FSN E-Commerce Ventures Ltd,Consumer Services,Beauty & Personal Care Online,Nifty500,INE388Y01029,543384,NYKAA
+LICI,Life Insurance Corporation of India,Financial Services,Life Insurance,Nifty50|Nifty500,INE0J1Y01017,543526,LICI
+ICICIGI,ICICI Lombard General Insurance,Financial Services,General Insurance,NiftyNext50|Nifty500,INE765G01017,540716,ICICIGI

@@ -1,0 +1,146 @@
+# render.yaml — Deploy India Markets Terminal on Render.com
+#
+# Steps:
+#   1. Push your code to GitHub (private repo recommended).
+#   2. Go to https://dashboard.render.com → New → Blueprint.
+#   3. Connect the repo. Render reads this file automatically.
+#   4. Set environment variables (ANTHROPIC_API_KEY, EMAIL_*, TERMINAL_PASSWORD)
+#      in the Render dashboard under each service's "Environment" tab.
+#   5. Hit Apply. The web service + 5 cron jobs deploy together.
+#
+# Cost (as of late 2024):
+#   Starter web service: $7/month  (always on, 512 MB RAM)
+#   Cron jobs:           free up to a few minutes/day
+#   Disk:                $0.25/GB/month  (1 GB is plenty)
+#
+# Times below are UTC. IST = UTC + 5:30.
+#   08:30 IST → 03:00 UTC  (morning email)
+#   16:30 IST → 11:00 UTC  (price update + evening email)
+#   17:00 IST → 11:30 UTC  (filings)
+#   17:30 IST → 12:00 UTC  (AI summaries)
+
+services:
+  # ── Web app ───────────────────────────────────────────────────────────────
+  - type: web
+    name: india-terminal
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ANTHROPIC_API_KEY
+        sync: false             # set manually in dashboard
+      - key: TERMINAL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_TO
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  # ── Cron: NSE bhavcopy + price returns (Mon–Fri 16:30 IST) ───────────────
+  - type: cron
+    name: cron-prices
+    runtime: python
+    plan: starter
+    schedule: "0 11 * * 1-5"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/update_prices.py
+    envVars:
+      - fromService:
+          type: web
+          name: india-terminal
+          envVarKey: ANTHROPIC_API_KEY
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  # ── Cron: NSE corporate filings (Mon–Fri 17:00 IST) ──────────────────────
+  - type: cron
+    name: cron-filings
+    runtime: python
+    plan: starter
+    schedule: "30 11 * * 1-5"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/update_filings.py --days 3
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  # ── Cron: AI summaries on new filings (Mon–Fri 17:30 IST) ────────────────
+  - type: cron
+    name: cron-ai-summaries
+    runtime: python
+    plan: starter
+    schedule: "0 12 * * 1-5"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/generate_ai_summaries.py --max 50
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  # ── Cron: Morning email brief (Mon–Fri 08:30 IST) ────────────────────────
+  - type: cron
+    name: cron-email-morning
+    runtime: python
+    plan: starter
+    schedule: "0 3 * * 1-5"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_daily_email.py --brief morning
+    envVars:
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_TO
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  # ── Cron: Evening email brief (Mon–Fri 16:35 IST, after price update) ────
+  - type: cron
+    name: cron-email-evening
+    runtime: python
+    plan: starter
+    schedule: "5 11 * * 1-5"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_daily_email.py --brief evening
+    envVars:
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_TO
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

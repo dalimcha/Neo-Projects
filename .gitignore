@@ -1,0 +1,34 @@
+# ── Secrets ──────────────────────────────────────────────────────────────────
+.env
+.env.local
+.streamlit/secrets.toml
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Python ───────────────────────────────────────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editors ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── Data caches (keep the seed CSVs, ignore large generated ones) ────────────
+# Comment these out if you want to commit your real data
+# data/prices.csv
+# data/filings.csv
+# data/news.csv
