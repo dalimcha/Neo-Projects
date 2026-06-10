@@ -16,6 +16,7 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 from typing import Optional
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 
@@ -25,8 +26,8 @@ import streamlit as st
 UNIVERSE_SPECS = {
     "Nifty 50":      {"expected": 50,   "min_valid": 45},
     "Nifty 100":     {"expected": 100,  "min_valid": 90},
-    "Nifty 500":     {"expected": 500,  "min_valid": 450},
-    "Top 1000":      {"expected": 1000, "min_valid": 900},
+    "Nifty 500":     {"expected": 500,  "min_valid": 475},
+    "Top 1000":      {"expected": 1000, "min_valid": 950},
 }
 
 # Per-analytic minimum thresholds (% of selected universe)
@@ -41,9 +42,9 @@ ANALYTIC_GATES = {
 
 # Freshness windows (in hours, for trading-day data)
 FRESHNESS = {
-    "fresh":   24,   # data point is from the last business day
+    "fresh":   24,
     "delayed": 48,
-    "stale":   168,  # > 1 week = stale
+    "stale":   168,
 }
 
 
@@ -95,7 +96,12 @@ def _classify_freshness(ts: Optional[datetime]) -> str:
     """Map a timestamp to Fresh/Delayed/Stale/Failed."""
     if ts is None:
         return "Failed"
-    age = datetime.now() - ts
+    now = datetime.now(tz=IST)
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=IST)
+    else:
+        ts = ts.astimezone(IST)
+    age = now - ts
     if age <= timedelta(hours=FRESHNESS["fresh"]):
         return "Fresh"
     if age <= timedelta(hours=FRESHNESS["delayed"]):
@@ -178,10 +184,20 @@ def build_universe_report(
             f"Universe size {rep.actual_loaded} below required "
             f"{rep.min_valid_required} for {universe_label}."
         )
-    if rep.valid_1d_return_rows < int(0.50 * rep.actual_loaded):
+    if rep.valid_price_rows < rep.min_valid_required:
         reasons.append(
-            f"Only {rep.valid_1d_return_rows} valid 1D returns out of "
-            f"{rep.actual_loaded} loaded — price feed unreliable."
+            f"Only {rep.valid_price_rows} valid latest price rows; "
+            f"need at least {rep.min_valid_required}."
+        )
+    if rep.valid_1d_return_rows < rep.min_valid_required:
+        reasons.append(
+            f"Only {rep.valid_1d_return_rows} valid 1D return rows; "
+            f"need at least {rep.min_valid_required}."
+        )
+    if rep.valid_sector_rows < rep.min_valid_required:
+        reasons.append(
+            f"Only {rep.valid_sector_rows} valid sector labels; "
+            f"need at least {rep.min_valid_required}."
         )
     if rep.last_price_fetch is None:
         reasons.append("No price-fetch timestamp on record.")
@@ -368,3 +384,4 @@ def append_quality_log(rep: UniverseReport, log_path: Path) -> None:
             df.to_csv(log_path, index=False)
     except Exception:
         pass  # logging failures must never crash the app
+IST = ZoneInfo("Asia/Kolkata")

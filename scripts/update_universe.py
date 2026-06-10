@@ -1,213 +1,229 @@
 """
-update_universe.py
-──────────────────
-Fetch official NSE index constituent CSVs and write them to data/universe.csv.
+Build the canonical NIFTY universe file from official NSE constituent lists.
 
-NSE publishes the official index files at:
-    https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv
-    https://nsearchives.nseindia.com/content/indices/ind_nifty100list.csv
-    https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv
+Priority:
+1. Official NSE index constituent CSVs
+2. Manual CSV import when NSE is blocked
 
-These are the canonical lists used by the validation layer.
-
-Run:
-    python scripts/update_universe.py                 # default: Nifty 500
-    python scripts/update_universe.py --index 100
-    python scripts/update_universe.py --index 50,100,500
-
-The script merges all requested indices into one universe.csv with an
-`index_membership` column like "Nifty50|Nifty100|Nifty500".
+This script writes `data/universe.csv` with source and timestamp metadata.
+It does not invent sectors; sectors are derived deterministically from the
+industry string when NSE does not provide a direct sector field.
 """
 
 from __future__ import annotations
-import sys, argparse, logging, io
+
+import argparse
+import io
+import logging
+import sys
 from pathlib import Path
 
-import requests
 import pandas as pd
+import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from utils.pipeline import (
+    UNIVERSE_CSV,
+    UNIVERSE_COLUMNS,
+    append_failed_tickers,
+    atomic_write_csv,
+    classify_sector,
+    ensure_data_files,
+    log_quality,
+    make_run_id,
+    now_ist_iso,
+    parse_manual_universe_import,
+)
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-ROOT = Path(__file__).parent.parent
-DATA = ROOT / "data"
-UNIVERSE_CSV = DATA / "universe.csv"
-
 NSE_URLS = {
-    "Nifty50":     "https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv",
-    "NiftyNext50": "https://nsearchives.nseindia.com/content/indices/ind_niftynext50list.csv",
-    "Nifty100":    "https://nsearchives.nseindia.com/content/indices/ind_nifty100list.csv",
-    "Nifty500":    "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv",
+    "Nifty50": "https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv",
+    "Nifty100": "https://nsearchives.nseindia.com/content/indices/ind_nifty100list.csv",
+    "Nifty500": "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv",
 }
 
 HEADERS = {
-    "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
+    ),
     "Accept": "text/csv,application/json,*/*",
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.nseindia.com/",
 }
 
+EXPECTED = {
+    "Nifty50": 50,
+    "Nifty100": 100,
+    "Nifty500": 500,
+}
 
-def _fetch_index(index_name: str) -> pd.DataFrame:
-    url = NSE_URLS[index_name]
-    logger.info("Fetching %s from %s", index_name, url)
 
-    # NSE blocks bare requests; establish session via homepage first
+def fetch_index_csv(index_name: str, run_id: str) -> pd.DataFrame:
     sess = requests.Session()
     sess.headers.update(HEADERS)
     try:
-        sess.get("https://www.nseindia.com/", timeout=10)
+        sess.get("https://www.nseindia.com", timeout=10)
     except Exception:
         pass
 
+    url = NSE_URLS[index_name]
     try:
-        r = sess.get(url, timeout=20)
-        r.raise_for_status()
-    except Exception as e:
-        logger.error("Fetch failed for %s: %s", index_name, e)
+        resp = sess.get(url, timeout=25)
+        resp.raise_for_status()
+        raw = pd.read_csv(io.StringIO(resp.text))
+    except Exception as exc:
+        append_failed_tickers([{
+            "run_id": run_id,
+            "dataset": "universe",
+            "ticker": index_name,
+            "stage": "fetch_index_csv",
+            "source": url,
+            "error_message": str(exc),
+            "failed_at": now_ist_iso(),
+        }])
+        logger.error("Failed to fetch %s: %s", index_name, exc)
         return pd.DataFrame()
 
-    try:
-        df = pd.read_csv(io.StringIO(r.text))
-    except Exception as e:
-        logger.error("CSV parse failed for %s: %s", index_name, e)
-        return pd.DataFrame()
-
-    # Standardise column names — NSE CSVs use varying header capitalisation
     rename = {
         "Company Name": "company_name",
-        "Industry":     "industry",
-        "Symbol":       "ticker",
-        "Series":       "series",
-        "ISIN Code":    "isin",
+        "Industry": "industry",
+        "Symbol": "ticker",
+        "ISIN Code": "isin",
     }
-    df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+    raw = raw.rename(columns={k: v for k, v in rename.items() if k in raw.columns})
+    if "ticker" not in raw.columns:
+        raise ValueError(f"{index_name} CSV missing Symbol column")
 
-    if "ticker" not in df.columns:
-        logger.error("%s CSV is missing Symbol column", index_name)
-        return pd.DataFrame()
+    out = raw.copy()
+    out["ticker"] = out["ticker"].astype(str).str.strip().str.upper()
+    out["company_name"] = out.get("company_name", pd.Series(dtype=str)).astype(str).str.strip()
+    out["industry"] = out.get("industry", pd.Series(dtype=str)).astype(str).str.strip()
+    out["sector"] = out["industry"].map(classify_sector)
+    out["index_membership"] = index_name
+    out["isin"] = out.get("isin", pd.Series(dtype=str))
+    out["bse_code"] = out.get("bse_code", "")
+    out["nse_code"] = out.get("nse_code", out["ticker"])
+    out["source"] = f"NSE Constituents:{index_name}"
+    out["fetched_at"] = now_ist_iso()
+    out = out[~out["ticker"].astype(str).str.contains("DUMMY", case=False, na=False)].copy()
+    out = out[~out["company_name"].astype(str).str.contains("DUMMY", case=False, na=False)].copy()
+    return out[UNIVERSE_COLUMNS].drop_duplicates(subset=["ticker"]).reset_index(drop=True)
 
-    df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
-    df["index_membership"] = index_name
-    return df[["ticker", "company_name", "industry", "isin", "index_membership"]]
 
-
-def run(indices: list[str]) -> None:
-    logger.info("=== Universe Update Started ===")
-    DATA.mkdir(exist_ok=True)
-
-    frames = []
-    for idx in indices:
-        if idx not in NSE_URLS:
-            logger.warning("Unknown index %s — skipping", idx)
-            continue
-        f = _fetch_index(idx)
-        if not f.empty:
-            frames.append(f)
-
-    if not frames:
-        logger.error("No constituents fetched. Universe NOT updated.")
-        logger.error("If you are on a network that blocks NSE, "
-                     "download the CSV manually from "
-                     "https://www.nseindia.com/products-services/indices-nifty500-index "
-                     "and run --import-csv path/to/file.csv")
-        return
-
+def merge_indices(frames: list[pd.DataFrame]) -> pd.DataFrame:
     combined = pd.concat(frames, ignore_index=True)
-
-    # Merge index_membership for stocks in multiple indices (Nifty 50 ⊂ 100 ⊂ 500)
+    combined = combined[~combined["ticker"].astype(str).str.contains("DUMMY", case=False, na=False)].copy()
     merged = (
-        combined
-        .groupby(["ticker"], as_index=False)
+        combined.groupby("ticker", as_index=False)
         .agg({
             "company_name": "first",
-            "industry":     "first",
-            "isin":         "first",
+            "sector": "first",
+            "industry": "first",
             "index_membership": lambda s: "|".join(sorted(set(s))),
+            "isin": "first",
+            "bse_code": "first",
+            "nse_code": "first",
+            "source": lambda s: "|".join(sorted(set(s))),
+            "fetched_at": "max",
         })
     )
-
-    # Add empty sector column if not present — sectors live in sectors.csv
-    if "sector" not in merged.columns:
-        merged["sector"] = ""
-    if "bse_code" not in merged.columns:
-        merged["bse_code"] = ""
-    if "nse_code" not in merged.columns:
-        merged["nse_code"] = merged["ticker"]
-
-    # Order columns
-    cols = ["ticker", "company_name", "sector", "industry",
-            "index_membership", "isin", "bse_code", "nse_code"]
-    merged = merged[[c for c in cols if c in merged.columns]]
-
-    # Backup existing universe before overwriting
-    if UNIVERSE_CSV.exists():
-        backup = UNIVERSE_CSV.with_suffix(".csv.bak")
-        UNIVERSE_CSV.replace(backup)
-        logger.info("Backed up existing universe to %s", backup)
-
-    merged.to_csv(UNIVERSE_CSV, index=False)
-    logger.info("Wrote %d unique tickers across %d indices to %s",
-                len(merged), len(indices), UNIVERSE_CSV)
-
-    # Quick health check
-    for idx in indices:
-        n = merged["index_membership"].str.contains(idx, na=False).sum()
-        logger.info("  %s: %d tickers", idx, n)
+    return merged[UNIVERSE_COLUMNS].sort_values("ticker").reset_index(drop=True)
 
 
-def import_csv(path: str, index_label: str) -> None:
-    """Load a manually downloaded NSE CSV (when network blocks NSE)."""
-    logger.info("Importing %s as %s", path, index_label)
-    df = pd.read_csv(path)
-    rename = {
-        "Company Name": "company_name", "Industry": "industry",
-        "Symbol": "ticker", "ISIN Code": "isin",
+def run(indices: list[str], import_csv: str | None = None, import_label: str = "Nifty500") -> None:
+    ensure_data_files()
+    run_id = make_run_id("universe")
+
+    if import_csv:
+        df = parse_manual_universe_import(Path(import_csv), import_label)
+        atomic_write_csv(df, UNIVERSE_CSV, UNIVERSE_COLUMNS)
+        log_quality(
+            run_id=run_id,
+            dataset="universe",
+            universe=import_label,
+            expected_rows=EXPECTED.get(import_label, len(df)),
+            loaded_rows=len(df),
+            valid_sector_rows=int(df["sector"].astype(str).replace("", pd.NA).notna().sum()),
+            source=f"Manual Import:{Path(import_csv).name}",
+            last_refresh_at=now_ist_iso(),
+            details=f"Manual universe import from {import_csv}",
+        )
+        logger.info("Universe written from manual import: %s (%d rows)", UNIVERSE_CSV, len(df))
+        return
+
+    frames: list[pd.DataFrame] = []
+    for index_name in indices:
+        if index_name not in NSE_URLS:
+            logger.warning("Skipping unsupported index: %s", index_name)
+            continue
+        df = fetch_index_csv(index_name, run_id)
+        if not df.empty:
+            logger.info("%s rows fetched for %s", len(df), index_name)
+            frames.append(df)
+
+    if not frames:
+        logger.error("No universe data fetched. Existing universe retained.")
+        log_quality(
+            run_id=run_id,
+            dataset="universe",
+            universe="|".join(indices),
+            expected_rows=max(EXPECTED.get(i, 0) for i in indices) if indices else 0,
+            loaded_rows=0,
+            source="NSE Constituents",
+            last_refresh_at=None,
+            details="Universe fetch failed for all requested indices. Existing file retained.",
+        )
+        return
+
+    merged = merge_indices(frames)
+    atomic_write_csv(merged, UNIVERSE_CSV, UNIVERSE_COLUMNS)
+
+    expected_rows = max(EXPECTED.get(i, 0) for i in indices) if indices else len(merged)
+    valid_sector_rows = int(merged["sector"].astype(str).replace("", pd.NA).notna().sum())
+    log_quality(
+        run_id=run_id,
+        dataset="universe",
+        universe="|".join(indices),
+        expected_rows=expected_rows,
+        loaded_rows=len(merged),
+        valid_sector_rows=valid_sector_rows,
+        source="NSE Constituents",
+        last_refresh_at=now_ist_iso(),
+        details=f"Fetched indices: {','.join(indices)}",
+    )
+    logger.info("Universe written to %s (%d rows)", UNIVERSE_CSV, len(merged))
+
+
+def parse_indices(value: str) -> list[str]:
+    mapping = {
+        "50": "Nifty50",
+        "100": "Nifty100",
+        "500": "Nifty500",
+        "nifty50": "Nifty50",
+        "nifty100": "Nifty100",
+        "nifty500": "Nifty500",
     }
-    df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
-    df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
-    df["index_membership"] = index_label
-    df["sector"] = df.get("sector", "")
-    df["bse_code"] = df.get("bse_code", "")
-    df["nse_code"] = df["ticker"]
-    out_cols = ["ticker","company_name","sector","industry",
-                "index_membership","isin","bse_code","nse_code"]
-    df = df[[c for c in out_cols if c in df.columns]]
-    df.to_csv(UNIVERSE_CSV, index=False)
-    logger.info("Wrote %d tickers to %s", len(df), UNIVERSE_CSV)
+    out: list[str] = []
+    for token in value.split(","):
+        key = token.strip().lower()
+        if not key:
+            continue
+        mapped = mapping.get(key, token.strip())
+        if mapped not in out:
+            out.append(mapped)
+    return out or ["Nifty500"]
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Update universe from NSE")
-    parser.add_argument(
-        "--index", default="500",
-        help="Comma-separated subset of 50/100/Next50/500 (default: 500)",
-    )
-    parser.add_argument(
-        "--import-csv",
-        help="Bypass network — import a manually downloaded NSE CSV",
-    )
-    parser.add_argument(
-        "--label", default="Nifty500",
-        help="When using --import-csv, the index label to record",
-    )
+    parser = argparse.ArgumentParser(description="Update the equity universe from NSE constituent files.")
+    parser.add_argument("--index", default="500", help="Comma-separated set: 50,100,500")
+    parser.add_argument("--import-csv", help="Manual import path for universe CSV")
+    parser.add_argument("--label", default="Nifty500", help="Label used with --import-csv")
     args = parser.parse_args()
 
-    if args.import_csv:
-        import_csv(args.import_csv, args.label)
-    else:
-        wanted = []
-        for token in args.index.split(","):
-            t = token.strip()
-            if t == "50":   wanted.append("Nifty50")
-            elif t == "100": wanted.append("Nifty100")
-            elif t.lower() == "next50": wanted.append("NiftyNext50")
-            elif t == "500": wanted.append("Nifty500")
-            elif t in NSE_URLS: wanted.append(t)
-        if not wanted:
-            wanted = ["Nifty500"]
-        run(wanted)
+    run(parse_indices(args.index), import_csv=args.import_csv, import_label=args.label)

@@ -1,1 +1,1 @@
-ts,ticker,reason,attempted_source
+run_id,dataset,ticker,stage,source,error_message,failed_at

@@ -1,466 +1,559 @@
 """
 Market Command Center
-─────────────────────
-Daily market pulse: index snapshot, breadth, top movers,
-volume shocks, 52W extremes, sector heatmap, AI brief.
+
+Canonical front page wired only to Phase 1 datasets:
+- returns_snapshot.csv
+- sector_performance.csv
+- volume_shocks.csv
+- data_quality_log.csv
+- failed_tickers.csv
 """
 
-import streamlit as st
+from __future__ import annotations
+
+from datetime import datetime
+
 import pandas as pd
-from datetime import datetime, date
+import streamlit as st
 
 st.set_page_config(
     page_title="Market Command Center — India Terminal",
-    layout="wide", initial_sidebar_state="expanded",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 from utils.formatting import (
-    inject_css, page_header, section_label, kpi_card, index_card,
-    fmt_pct, fmt_price, fmt_cr, fmt_vol, html_pct, table_wrap, ai_box,
-    info_block, warn_block, score_bar,
+    inject_css,
+    page_header,
+    section_label,
+    kpi_card,
+    index_card,
+    info_block,
+    warn_block,
+    ai_box,
+    table_wrap,
+    fmt_price,
+    fmt_pct,
+    fmt_cr,
+    fmt_ratio,
 )
 from utils.data_loader import (
-    load_full_universe, get_top_movers, get_volume_shocks,
-    get_52w_extremes, get_sector_summary, load_filings, load_news,
+    load_universe,
+    load_fundamentals,
+    load_returns_snapshot,
+    load_sector_performance,
+    load_volume_shocks,
+    load_filings,
+    load_news,
+    load_data_quality_log,
+    load_failed_tickers,
 )
-from utils.nse_fetcher import fetch_index_snapshot, fetch_bhavcopy
+from utils.validation import build_universe_report, render_data_quality_panel, gate, UNIVERSE_SPECS
+from utils.nse_fetcher import fetch_index_snapshot
 from utils.charting import sector_heatmap, _empty_chart
-from utils.validation import (
-    build_universe_report, render_data_quality_panel, gate,
-    UNIVERSE_SPECS, append_quality_log,
-)
-from utils.data_loader import DATA as DATA_DIR
 import utils.ai_summarizer as ai
+
 
 inject_css()
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+
+def _filter_universe(df: pd.DataFrame, universe_label: str) -> pd.DataFrame:
+    if df.empty or universe_label == "All":
+        return df
+    if "index_membership" not in df.columns:
+        return df
+    token_map = {
+        "Nifty 50": "Nifty50",
+        "Nifty 100": "Nifty100",
+        "Nifty 500": "Nifty500",
+        "Top 1000": "Top1000",
+    }
+    token = token_map.get(universe_label, universe_label.replace(" ", ""))
+    return df[df["index_membership"].astype(str).str.contains(token, na=False)].copy()
+
+
+def _latest_quality_status(log_df: pd.DataFrame, dataset: str = "prices") -> tuple[str | None, str | None]:
+    if log_df.empty or "dataset" not in log_df.columns:
+        return None, None
+    sub = log_df[log_df["dataset"].astype(str) == dataset].copy()
+    if sub.empty:
+        return None, None
+    if "last_refresh_at" in sub.columns:
+        sub["last_refresh_at"] = pd.to_datetime(sub["last_refresh_at"], errors="coerce")
+        sub = sub.sort_values("last_refresh_at")
+    row = sub.iloc[-1]
+    ts = row.get("last_refresh_at")
+    ts_str = ts.strftime("%d %b %Y %H:%M") if pd.notna(ts) else None
+    return row.get("status"), ts_str
+
+
+def _safe_ad_ratio(advancers: int, decliners: int) -> str:
+    if decliners == 0:
+        return "N/A"
+    return f"{advancers / decliners:.2f}x"
+
+
+def _event_maps(filings_df: pd.DataFrame, news_df: pd.DataFrame) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    filing_map: dict[str, str] = {}
+    news_map: dict[str, str] = {}
+    catalyst_map: dict[str, str] = {}
+
+    if not filings_df.empty and "ticker" in filings_df.columns:
+        tmp = filings_df.copy()
+        if "date" in tmp.columns:
+            tmp["date"] = pd.to_datetime(tmp["date"], errors="coerce")
+            tmp = tmp.sort_values("date", ascending=False)
+        for _, r in tmp.iterrows():
+            t = str(r.get("ticker", "")).upper().strip()
+            if t and t not in filing_map:
+                filing_map[t] = str(r.get("subject", "")).strip()
+                filing_type = str(r.get("type", "")).strip()
+                if filing_type:
+                    catalyst_map[t] = filing_type
+
+    if not news_df.empty and "tickers_mentioned" in news_df.columns:
+        tmp = news_df.copy()
+        if "date" in tmp.columns:
+            tmp["date"] = pd.to_datetime(tmp["date"], errors="coerce")
+            tmp = tmp.sort_values("date", ascending=False)
+        for _, r in tmp.iterrows():
+            tickers = [x.strip().upper() for x in str(r.get("tickers_mentioned", "")).split("|") if x.strip()]
+            headline = str(r.get("headline", "")).strip()
+            for t in tickers:
+                if t and t not in news_map:
+                    news_map[t] = headline
+                    if t not in catalyst_map and headline:
+                        catalyst_map[t] = "News-driven"
+
+    return filing_map, news_map, catalyst_map
+
+
+def _actionability_tag(row: pd.Series, catalyst_map: dict[str, str]) -> str:
+    ticker = str(row.get("ticker", "")).upper()
+    volume_ratio = pd.to_numeric(row.get("volume_ratio_30d"), errors="coerce")
+    ret_1d = pd.to_numeric(row.get("return_1d"), errors="coerce")
+
+    if ticker in catalyst_map:
+        raw = catalyst_map[ticker].lower()
+        if "result" in raw:
+            return "Result-driven"
+        if "order" in raw:
+            return "News-driven"
+        if "board" in raw or "management" in raw or "fundraise" in raw:
+            return "Needs research"
+        if "news" in raw:
+            return "News-driven"
+
+    if pd.notna(volume_ratio) and volume_ratio >= 3 and pd.notna(ret_1d) and abs(ret_1d) >= 0.03:
+        return "Technical breakout"
+    if pd.notna(ret_1d) and ret_1d < -0.04:
+        return "Reversal candidate"
+    return "No clear catalyst"
+
+
+def _confidence_label(row: pd.Series, filing_map: dict[str, str], news_map: dict[str, str]) -> str:
+    ticker = str(row.get("ticker", "")).upper()
+    if ticker in filing_map and ticker in news_map:
+        return "High"
+    if ticker in filing_map or ticker in news_map:
+        return "Medium"
+    return "Low"
+
+
+def _render_movers_table(title: str, df: pd.DataFrame, n: int, ascending: bool, filing_map: dict[str, str], news_map: dict[str, str], catalyst_map: dict[str, str]) -> None:
+    section_label(title)
+    if df.empty:
+        info_block("No valid move data available.")
+        return
+
+    sub = df.dropna(subset=["return_1d"]).sort_values("return_1d", ascending=ascending).head(n).copy()
+
+    rows = ""
+    for _, r in sub.iterrows():
+        ticker = str(r.get("ticker", ""))
+        event = filing_map.get(ticker) or news_map.get(ticker) or "No public event linked"
+        tag = _actionability_tag(r, catalyst_map)
+        conf = _confidence_label(r, filing_map, news_map)
+        move = pd.to_numeric(r.get("return_1d"), errors="coerce")
+        move_cls = "pos" if pd.notna(move) and move >= 0 else "neg"
+        rows += (
+            "<tr>"
+            f"<td class='ticker'>{ticker}</td>"
+            f"<td class='name'>{r.get('company_name', '')}</td>"
+            f"<td>{r.get('sector', 'N/A')}</td>"
+            f"<td>{fmt_pct((move * 100) if pd.notna(move) else pd.NA)}</td>"
+            f"<td>{fmt_pct(pd.to_numeric(r.get('return_1w'), errors='coerce') * 100)}</td>"
+            f"<td>{fmt_pct(pd.to_numeric(r.get('return_1m'), errors='coerce') * 100)}</td>"
+            f"<td>{fmt_ratio(r.get('volume_ratio_30d'))}</td>"
+            f"<td>{fmt_cr(r.get('market_cap_cr'))}</td>"
+            f"<td style='text-align:left;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{event}</td>"
+            f"<td style='text-align:left;' class='{move_cls}'>{tag}</td>"
+            f"<td>{conf}</td>"
+            "</tr>"
+        )
+
+    table_wrap(
+        f"""<table class='trm'>
+            <thead><tr>
+              <th class='left'>Ticker</th>
+              <th class='left'>Company</th>
+              <th class='left'>Sector</th>
+              <th>1D</th>
+              <th>1W</th>
+              <th>1M</th>
+              <th>Vol/30D</th>
+              <th>MCap</th>
+              <th class='left'>Latest News/Filing</th>
+              <th class='left'>Actionability</th>
+              <th>Conf.</th>
+            </tr></thead>
+            <tbody>{rows}</tbody>
+           </table>""",
+        caption=f"{len(sub)} stocks",
+        caption_right="Canonical source: returns_snapshot.csv + filings/news",
+    )
+
+
+def _render_52w_table(title: str, df: pd.DataFrame, col_name: str, ascending: bool = True, limit: int = 12) -> None:
+    section_label(title)
+    if df.empty or col_name not in df.columns:
+        info_block("No 52-week proximity data available.")
+        return
+    sub = df.dropna(subset=[col_name]).sort_values(col_name, ascending=ascending).head(limit)
+    rows = ""
+    for _, r in sub.iterrows():
+        rows += (
+            "<tr>"
+            f"<td class='ticker'>{r.get('ticker','')}</td>"
+            f"<td class='name'>{r.get('company_name','')}</td>"
+            f"<td>{r.get('sector','N/A')}</td>"
+            f"<td>{fmt_price(r.get('price'))}</td>"
+            f"<td>{fmt_pct(r.get(col_name))}</td>"
+            f"<td>{fmt_pct(pd.to_numeric(r.get('return_1m'), errors='coerce') * 100)}</td>"
+            "</tr>"
+        )
+    table_wrap(
+        f"""<table class='trm'>
+            <thead><tr>
+                <th class='left'>Ticker</th>
+                <th class='left'>Company</th>
+                <th class='left'>Sector</th>
+                <th>Price</th>
+                <th>Distance</th>
+                <th>1M</th>
+            </tr></thead>
+            <tbody>{rows}</tbody>
+        </table>"""
+    )
+
+
+def _build_narrative(indices: dict, snapshot: pd.DataFrame, sector_df: pd.DataFrame) -> dict:
+    ret = pd.to_numeric(snapshot.get("return_1d"), errors="coerce").dropna()
+    adv = int((ret > 0).sum())
+    dec = int((ret < 0).sum())
+    top_g = snapshot.dropna(subset=["return_1d"]).nlargest(5, "return_1d")["ticker"].tolist() if not snapshot.empty else []
+    top_l = snapshot.dropna(subset=["return_1d"]).nsmallest(5, "return_1d")["ticker"].tolist() if not snapshot.empty else []
+    sector_moves = {}
+    if not sector_df.empty and "avg_return_1d" in sector_df.columns:
+        sector_moves = {
+            r["sector"]: round(float(r["avg_return_1d"]) * 100, 2)
+            for _, r in sector_df.head(6).iterrows()
+            if pd.notna(r.get("avg_return_1d"))
+        }
+    nifty50_change = indices.get("nifty50", {}).get("change_pct")
+    if nifty50_change is not None:
+        nifty50_change = f"{nifty50_change:+.2f}%"
+    return {
+        "nifty50_change": nifty50_change or "N/A",
+        "advancers": adv,
+        "decliners": dec,
+        "top_gainers": top_g,
+        "top_losers": top_l,
+        "sector_moves": sector_moves,
+    }
+
+
+def _deterministic_market_text(indices: dict, snapshot: pd.DataFrame, sector_df: pd.DataFrame) -> str:
+    ret = pd.to_numeric(snapshot.get("return_1d"), errors="coerce").dropna()
+    if ret.empty:
+        return "No valid return data available."
+    adv = int((ret > 0).sum())
+    dec = int((ret < 0).sum())
+    avg = ret.mean() * 100
+    leaders = []
+    laggards = []
+    if not sector_df.empty and "avg_return_1d" in sector_df.columns:
+        s = sector_df.dropna(subset=["avg_return_1d"]).copy()
+        leaders = s.nlargest(3, "avg_return_1d")["sector"].tolist()
+        laggards = s.nsmallest(3, "avg_return_1d")["sector"].tolist()
+    idx = indices.get("nifty50", {})
+    idx_text = f"Nifty 50 {idx.get('change_pct', 0):+.2f}%" if idx else "Index data unavailable"
+    return (
+        f"{idx_text}; breadth was {adv} advancers versus {dec} decliners, with average 1-day move {avg:+.2f}%. "
+        f"Sector leadership came from {', '.join(leaders) if leaders else 'N/A'}, while laggards included "
+        f"{', '.join(laggards) if laggards else 'N/A'}."
+    )
+
+
+universe_options = list(UNIVERSE_SPECS.keys()) + ["All"]
+
 with st.sidebar:
     st.markdown('<div class="sec-label">Universe</div>', unsafe_allow_html=True)
-    index_filter = st.selectbox(
-        "Selected Universe",
-        list(UNIVERSE_SPECS.keys()) + ["All"],
-        index=2,    # default Nifty 500
-    )
-    n_movers = st.slider("Movers to Show", 5, 20, 10)
-    st.markdown("---")
-    refresh = st.button("Refresh Data")
+    universe_label = st.selectbox("Selected Universe", universe_options, index=2)
+    movers_n = st.slider("Rows", 5, 20, 10)
 
-# Page header gets real freshness — wired in once we've built the universe report.
-# Stub for now; the real call happens after build_universe_report().
-page_header("Market Command Center", "Daily market pulse")
+returns_df = load_returns_snapshot()
+sector_df = load_sector_performance()
+volume_df = load_volume_shocks()
+filings_df = load_filings()
+news_df = load_news()
+quality_log_df = load_data_quality_log()
+failed_df = load_failed_tickers()
+universe_df = load_universe()
+fund_df = load_fundamentals()
 
-# ── Index Snapshot ────────────────────────────────────────────────────────────
-section_label("Index Snapshot")
+filtered_returns = _filter_universe(returns_df, universe_label)
+filtered_universe = _filter_universe(universe_df, universe_label)
+filtered_volume = _filter_universe(volume_df, universe_label)
 
-with st.spinner("Fetching index data…"):
-    try:
-        indices = fetch_index_snapshot() or {}
-    except Exception:
-        indices = {}
-
-# Source per index — sensex is hidden if not present (don't show blank card)
-INDEX_CONFIG = [
-    ("nifty50",     "Nifty 50",      "NSE"),
-    ("niftyNext50", "Nifty Next 50", "NSE"),
-    ("nifty500",    "Nifty 500",     "NSE"),
-    ("bankNifty",   "Bank Nifty",    "NSE"),
-    ("vix",         "India VIX",     "NSE"),
-    ("sensex",      "Sensex",        "BSE"),
-]
-
-# Filter out indices we have no data for, rather than show empty cards
-visible = [
-    (k, lbl, src) for (k, lbl, src) in INDEX_CONFIG
-    if k in indices and indices[k].get("value") is not None
-]
-
-# If NOTHING fetched, show one banner instead of 6 empty cards
-if not visible:
-    warn_block(
-        "No index data available. "
-        "NSE / BSE feeds returned no values. "
-        "Indices will populate once the fetcher reaches the API "
-        "(blocked during off-hours or by Cloudflare on Streamlit Cloud)."
-    )
-else:
-    idx_ts = datetime.now().strftime("%d %b %H:%M")
-    idx_cols = st.columns(len(visible))
-    for col, (key, label, source) in zip(idx_cols, visible):
-        with col:
-            d = indices[key]
-            val   = d.get("value")
-            chg   = d.get("change_pct", 0) or 0
-            pts   = d.get("change", 0) or 0
-            is_up = None if key == "vix" else (chg >= 0)
-            index_card(
-                name    = label,
-                value   = f"{val:,.2f}",
-                change  = f"{chg:+.2f}%",
-                pts     = f"({pts:+.0f})",
-                is_up   = is_up,
-                source  = source,
-                data_ts = idx_ts,
-            )
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── Data Quality Gate ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=300)
-def _get_universe():
-    return load_full_universe()
-
-df = _get_universe()
-
-# Apply universe filter
-if not df.empty and "index_membership" in df.columns and index_filter != "All":
-    df = df[df["index_membership"].str.contains(index_filter.replace(" ",""), na=False)]
-
-# Build the universe report — this drives EVERY downstream gate
-from utils.data_loader import load_prices, load_fundamentals
 quality_report = build_universe_report(
-    universe_label      = index_filter if index_filter in UNIVERSE_SPECS else "Nifty 500",
-    universe_df         = df,
-    prices_df           = load_prices(),
-    fundamentals_df     = load_fundamentals(),
-    news_df             = load_news(),
-    source_prices       = "NSE Bhavcopy / yfinance",
-    source_fundamentals = "Screener.in (manual)",
-    source_news         = "NSE Corp Announcements",
+    universe_label=universe_label if universe_label in UNIVERSE_SPECS else "Nifty 500",
+    universe_df=filtered_universe,
+    prices_df=filtered_returns.rename(columns={"price": "close"}),
+    fundamentals_df=fund_df,
+    news_df=news_df,
+    failed_tickers=failed_df["ticker"].tolist() if not failed_df.empty and "ticker" in failed_df.columns else [],
+    source_prices="returns_snapshot.csv",
+    source_fundamentals="fundamentals.csv",
+    source_news="filings.csv / news.csv",
 )
-append_quality_log(quality_report, DATA_DIR / "data_quality_log.csv")
 
-render_data_quality_panel(quality_report, compact=False)
+status, last_ts = _latest_quality_status(quality_log_df, dataset="prices")
+page_header(
+    "Market Command Center",
+    "Canonical market pulse and data quality gate",
+    data_status=(status.title() if isinstance(status, str) else quality_report.fetch_status),
+    data_ts=last_ts,
+)
 
-# Sidebar mini-panel too
 with st.sidebar:
     render_data_quality_panel(quality_report, compact=True)
 
-# ── Breadth KPIs (gated) ──────────────────────────────────────────────────────
-section_label("Market Breadth")
+section_label("Data Quality")
+render_data_quality_panel(quality_report, compact=False)
 
-if not gate(quality_report, "breadth"):
-    warn_block(
-        "Market breadth cannot be computed — universe completeness below 90%. "
-        "Run scripts/update_prices.py to refresh the price feed."
-    )
+section_label("Index Snapshot")
+try:
+    indices = fetch_index_snapshot() or {}
+except Exception:
+    indices = {}
+
+index_config = [
+    ("nifty50", "Nifty 50", "NSE"),
+    ("niftyNext50", "Nifty Next 50", "NSE"),
+    ("nifty500", "Nifty 500", "NSE"),
+    ("bankNifty", "Bank Nifty", "NSE"),
+    ("sensex", "Sensex", "BSE"),
+    ("vix", "India VIX", "NSE"),
+]
+visible = [(k, l, s) for (k, l, s) in index_config if k in indices and indices[k].get("value") is not None]
+if not visible:
+    warn_block("Index APIs returned no values. This does not affect the canonical price datasets, but live index cards are unavailable right now.")
 else:
-    d_col = df["return_1d"].dropna()
-    advancers = int((d_col > 0).sum())
-    decliners = int((d_col < 0).sum())
-    unchanged = int((d_col == 0).sum())
-    total     = advancers + decliners + unchanged
-
-    # ── Bug fix: never produce inf ────────────────────────────────────────
-    if decliners == 0:
-        ad_ratio_str = "N/A"
-    else:
-        ad_ratio_str = f"{advancers / decliners:.2f}x"
-
-    avg_ret_pct = float(d_col.mean()) * (100 if d_col.abs().max() < 1 else 1)
-
-    # 52W proximity counts — only if we have those columns
-    if "dist_52w_high_pct" in df.columns:
-        n_52h = int((df["dist_52w_high_pct"].abs() < 3).sum())
-    else:
-        n_52h = None
-    if "dist_52w_low_pct" in df.columns:
-        n_52l = int((df["dist_52w_low_pct"].abs() < 3).sum())
-    else:
-        n_52l = None
-
-    pct_pos = (advancers / total * 100) if total > 0 else None
-
-    kpi_cols = st.columns(6)
-    kpi_data = [
-        ("Advancers",     str(advancers),
-         f"{pct_pos:.0f}% positive" if pct_pos is not None else "",
-         advancers > decliners),
-        ("Decliners",     str(decliners), "",
-         False if advancers > decliners else None),
-        ("A/D Ratio",     ad_ratio_str, "Advancers ÷ Decliners",
-         decliners > 0 and advancers >= decliners),
-        ("Avg 1D Return", f"{avg_ret_pct:+.2f}%" if total else "N/A", "",
-         avg_ret_pct >= 0),
-        ("Near 52W High", str(n_52h) if n_52h is not None else "N/A",
-         "Within 3% of 52W high", None),
-        ("Near 52W Low",  str(n_52l) if n_52l is not None else "N/A",
-         "Within 3% of 52W low",  None),
-    ]
-    for col, (lbl, val, sub, pos) in zip(kpi_cols, kpi_data):
+    cols = st.columns(len(visible))
+    for col, (key, label, source) in zip(cols, visible):
         with col:
-            kpi_card(lbl, val, sub, delta_pos=pos)
+            d = indices[key]
+            index_card(
+                name=label,
+                value=f"{d.get('value', 0):,.2f}",
+                change=f"{d.get('change_pct', 0):+.2f}%",
+                pts=f"({d.get('change', 0):+.0f})",
+                is_up=None if key == "vix" else (float(d.get("change_pct", 0) or 0) >= 0),
+                source=source,
+                data_ts=datetime.now().strftime("%d %b %H:%M"),
+            )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "Top Movers", "Volume Shocks", "52W Extremes",
-    "Sector Heatmap", "AI Market Brief", "What Changed Today",
+section_label("Market Breadth")
+if not gate(quality_report, "breadth"):
+    warn_block("Universe incomplete. Analytics disabled until data quality passes.")
+else:
+    ret = pd.to_numeric(filtered_returns["return_1d"], errors="coerce").dropna()
+    advancers = int((ret > 0).sum())
+    decliners = int((ret < 0).sum())
+    unchanged = int((ret == 0).sum())
+    total = advancers + decliners + unchanged
+    near_high = int(filtered_returns["dist_52w_high_pct"].abs().lt(3).sum()) if "dist_52w_high_pct" in filtered_returns.columns else 0
+    near_low = int(filtered_returns["dist_52w_low_pct"].abs().lt(3).sum()) if "dist_52w_low_pct" in filtered_returns.columns else 0
+    kpis = [
+        ("Advancers", str(advancers), f"{(advancers / total * 100):.0f}% positive" if total else "", advancers > decliners),
+        ("Decliners", str(decliners), f"{(decliners / total * 100):.0f}% negative" if total else "", decliners > advancers),
+        ("Unchanged", str(unchanged), "", None),
+        ("A/D Ratio", _safe_ad_ratio(advancers, decliners), "Advancers ÷ Decliners", None),
+        ("New 52W Highs", str(near_high), "Within 3% of high", None),
+        ("New 52W Lows", str(near_low), "Within 3% of low", None),
+    ]
+    cols = st.columns(6)
+    for col, (label, value, delta, delta_pos) in zip(cols, kpis):
+        with col:
+            kpi_card(label, value, delta, delta_pos)
+
+tabs = st.tabs([
+    "Market Narrative",
+    "Top Movers",
+    "Volume Shocks",
+    "52W Extremes",
+    "Sector Intelligence",
+    "What Changed Today",
 ])
 
-# ── TAB 1: Top Movers ─────────────────────────────────────────────────────────
-with tab1:
-    col_g, col_l = st.columns(2)
+filing_map, news_map, catalyst_map = _event_maps(filings_df, news_df)
 
-    def _movers_table(direction: str, title: str) -> None:
-        section_label(title)
-        if df.empty or "return_1d" not in df.columns:
-            info_block("Price data not yet loaded. Run scripts/update_prices.py to populate.")
-            return
+with tabs[0]:
+    section_label("Today's Market Narrative")
+    if not gate(quality_report, "ai_summary"):
+        warn_block("Narrative disabled because data quality does not pass the 90% gate.")
+    else:
+        payload = _build_narrative(indices, filtered_returns, sector_df)
+        deterministic = _deterministic_market_text(indices, filtered_returns, sector_df)
+        ai_text = ai.generate_market_summary(payload)
+        ai_box(ai_text if "unavailable" not in ai_text.lower() else deterministic, label="Market Summary")
 
-        sub = df.dropna(subset=["return_1d"])
-        if direction == "gainers":
-            sub = sub.nlargest(n_movers, "return_1d")
+        section_label("Meeting Talking Points")
+        if filtered_returns.empty:
+            info_block("No snapshot data available.")
         else:
-            sub = sub.nsmallest(n_movers, "return_1d")
+            top_g = filtered_returns.dropna(subset=["return_1d"]).nlargest(3, "return_1d")
+            top_l = filtered_returns.dropna(subset=["return_1d"]).nsmallest(3, "return_1d")
+            top_s = sector_df.dropna(subset=["avg_return_1d"]).nlargest(3, "avg_return_1d") if not sector_df.empty else pd.DataFrame()
+            points = []
+            for _, r in top_s.iterrows():
+                points.append(f"{r['sector']} led with average 1D return {r['avg_return_1d'] * 100:+.2f}% across {int(r['valid_return_count'])} stocks.")
+            for _, r in top_g.iterrows():
+                points.append(f"{r['ticker']} outperformed at {r['return_1d'] * 100:+.2f}% with volume at {fmt_ratio(r.get('volume_ratio_30d'))} of 30D average.")
+            for _, r in top_l.iterrows():
+                points.append(f"{r['ticker']} lagged at {r['return_1d'] * 100:+.2f}% and should be checked for results, ratings, or management updates.")
+            questions = [
+                "Which top movers had a clear public catalyst versus pure price action?",
+                "Are sector leaders supported by breadth or carried by a few heavyweights?",
+                "Which weak names have improving fundamentals despite poor 1M/3M momentum?",
+            ]
+            st.markdown("\n".join([f"- {p}" for p in points[:9] + questions]), unsafe_allow_html=False)
 
+with tabs[1]:
+    if not gate(quality_report, "top_movers"):
+        warn_block("Universe incomplete. Top movers disabled until data quality passes.")
+    else:
+        left, right = st.columns(2)
+        with left:
+            _render_movers_table("Top Gainers", filtered_returns, movers_n, False, filing_map, news_map, catalyst_map)
+        with right:
+            _render_movers_table("Top Losers", filtered_returns, movers_n, True, filing_map, news_map, catalyst_map)
+
+with tabs[2]:
+    section_label("Volume Shocks")
+    if not gate(quality_report, "volume_shocks"):
+        warn_block("Volume shock analytics disabled until valid volume coverage reaches the threshold.")
+    elif filtered_volume.empty:
+        info_block("No volume shocks above threshold.")
+    else:
+        sub = filtered_volume.sort_values("volume_ratio_30d", ascending=False).head(max(20, movers_n))
         rows = ""
         for _, r in sub.iterrows():
-            ret = r.get("return_1d", 0) or 0
-            cls = "pos" if ret > 0 else "neg"
             rows += (
-                f"<tr>"
+                "<tr>"
                 f"<td class='ticker'>{r.get('ticker','')}</td>"
                 f"<td class='name'>{r.get('company_name','')}</td>"
-                f"<td>{r.get('sector','')}</td>"
-                f"<td>{fmt_price(r.get('close', r.get('price','')))}</td>"
-                f"<td class='{cls}'>{fmt_pct(ret*100 if abs(ret)<10 else ret)}</td>"
-                f"<td>{fmt_vol(r.get('volume',''))}</td>"
-                f"</tr>"
+                f"<td>{r.get('sector','N/A')}</td>"
+                f"<td>{fmt_price(r.get('price'))}</td>"
+                f"<td>{fmt_ratio(r.get('volume_ratio_30d'))}</td>"
+                f"<td>{fmt_pct(pd.to_numeric(r.get('return_1d'), errors='coerce') * 100)}</td>"
+                f"<td>{filing_map.get(str(r.get('ticker','')).upper()) or news_map.get(str(r.get('ticker','')).upper()) or 'No public event linked'}</td>"
+                "</tr>"
             )
         table_wrap(
             f"""<table class='trm'>
                 <thead><tr>
-                  <th class='left'>Ticker</th><th class='left'>Company</th>
-                  <th class='left'>Sector</th><th>Price</th>
-                  <th>1D %</th><th>Volume</th>
+                    <th class='left'>Ticker</th>
+                    <th class='left'>Company</th>
+                    <th class='left'>Sector</th>
+                    <th>Price</th>
+                    <th>Vol/30D</th>
+                    <th>1D</th>
+                    <th class='left'>Latest News/Filing</th>
                 </tr></thead>
                 <tbody>{rows}</tbody>
-              </table>""",
+            </table>""",
+            caption=f"{len(sub)} qualifying names",
+            caption_right="Threshold: volume >= 2x 30D average",
         )
 
-    with col_g:
-        _movers_table("gainers", "Top Gainers")
-    with col_l:
-        _movers_table("losers", "Top Losers")
-
-# ── TAB 2: Volume Shocks ──────────────────────────────────────────────────────
-with tab2:
-    section_label("Volume Shocks — Unusual Activity")
-    if df.empty or "volume" not in df.columns:
-        info_block("Volume data not available. Requires NSE bhavcopy data.")
+with tabs[3]:
+    if not gate(quality_report, "52w_extremes"):
+        warn_block("52-week extreme analytics disabled until price coverage reaches the threshold.")
     else:
-        vol_df = df.dropna(subset=["volume"]).nlargest(n_movers * 2, "volume")
+        left, right = st.columns(2)
+        with left:
+            _render_52w_table("Near 52-Week High", filtered_returns, "dist_52w_high_pct", ascending=False, limit=12)
+        with right:
+            _render_52w_table("Near 52-Week Low", filtered_returns, "dist_52w_low_pct", ascending=True, limit=12)
 
-        rows = ""
-        for _, r in vol_df.iterrows():
-            ret = r.get("return_1d", 0) or 0
-            cls = "pos" if ret > 0 else "neg"
-            vol_ratio = r.get("volume_ratio_20d", "—")
-            vol_ratio_str = f"{vol_ratio:.1f}x" if isinstance(vol_ratio, (int, float)) else "—"
-            rows += (
-                f"<tr>"
-                f"<td class='ticker'>{r.get('ticker','')}</td>"
-                f"<td class='name'>{r.get('company_name','')}</td>"
-                f"<td>{r.get('sector','')}</td>"
-                f"<td>{fmt_price(r.get('close', r.get('price','')))}</td>"
-                f"<td class='{cls}'>{fmt_pct(ret*100 if abs(ret)<10 else ret)}</td>"
-                f"<td>{fmt_vol(r.get('volume',''))}</td>"
-                f"<td>{vol_ratio_str}</td>"
-                f"</tr>"
-            )
-        table_wrap(
-            f"""<table class='trm'>
-                <thead><tr>
-                  <th class='left'>Ticker</th><th class='left'>Company</th>
-                  <th class='left'>Sector</th><th>Price</th>
-                  <th>1D %</th><th>Volume</th><th>Vol/20D Avg</th>
-                </tr></thead>
-                <tbody>{rows}</tbody>
-              </table>""",
-        )
-
-# ── TAB 3: 52W Extremes ───────────────────────────────────────────────────────
-with tab3:
-    col_h, col_l = st.columns(2)
-    extremes = get_52w_extremes()
-
-    def _52w_table(data: pd.DataFrame, title: str, col_label: str) -> None:
-        section_label(title)
-        if data.empty:
-            info_block("52W data not available. Requires price history.")
-            return
-        metric = "dist_52w_high_pct" if "High" in title else "dist_52w_low_pct"
-        rows = ""
-        for _, r in data.head(15).iterrows():
-            d = r.get(metric, 0) or 0
-            rows += (
-                f"<tr>"
-                f"<td class='ticker'>{r.get('ticker','')}</td>"
-                f"<td class='name'>{r.get('company_name','')}</td>"
-                f"<td>{fmt_price(r.get('close', r.get('price','')))}</td>"
-                f"<td class='{'pos' if 'Low' in title else 'neg'}'>{fmt_pct(d)}</td>"
-                f"</tr>"
-            )
-        table_wrap(
-            f"""<table class='trm'>
-                <thead><tr>
-                  <th class='left'>Ticker</th><th class='left'>Company</th>
-                  <th>Price</th><th>{col_label}</th>
-                </tr></thead>
-                <tbody>{rows}</tbody>
-              </table>""",
-        )
-
-    with col_h:
-        _52w_table(extremes["near_high"], "Near 52-Week High", "Dist from High")
-    with col_l:
-        _52w_table(extremes["near_low"],  "Near 52-Week Low",  "Dist from Low")
-
-# ── TAB 4: Sector Heatmap ─────────────────────────────────────────────────────
-with tab4:
-    section_label("Sector Performance Heatmap")
-    period = st.selectbox(
-        "Return Period",
-        ["return_1d", "return_1w", "return_1m", "return_3m", "return_1y"],
-        format_func=lambda x: {"return_1d":"1 Day","return_1w":"1 Week",
-                                "return_1m":"1 Month","return_3m":"3 Month",
-                                "return_1y":"1 Year"}.get(x, x),
-        key="heatmap_period",
-    )
-    sec_df = get_sector_summary()
-    if not sec_df.empty and period in sec_df.columns:
-        sec_df[period] = sec_df[period] * 100 if sec_df[period].abs().max() < 2 else sec_df[period]
-        fig = sector_heatmap(sec_df, metric=period)
+with tabs[4]:
+    section_label("Sector Performance")
+    if not gate(quality_report, "sector_heatmap"):
+        warn_block("Sector heatmap disabled until sector labels and return coverage reach the threshold.")
+    elif sector_df.empty:
+        info_block("No sector performance file available.")
+    else:
+        fig = sector_heatmap(sector_df.rename(columns={"avg_return_1d": "return_1d", "market_cap_sum_cr": "market_cap_cr"}), metric="return_1d", title="Sector Performance")
         st.plotly_chart(fig, use_container_width=True)
 
-        # Sector table
-        display_cols = ["sector", period, "num_stocks"]
-        if "market_cap_cr" in sec_df.columns:
-            display_cols.append("market_cap_cr")
-        disp = sec_df[display_cols].sort_values(period, ascending=False).copy()
-        disp.columns = ["Sector", "Return %", "# Stocks"] + (["Market Cap (Cr)"] if "market_cap_cr" in sec_df.columns else [])
         rows = ""
-        for _, r in disp.iterrows():
-            ret = r.iloc[1]
-            cls = "pos" if ret > 0 else "neg"
-            mcap = f"₹{r.iloc[3]/1e5:.1f}L Cr" if len(r) > 3 else "—"
+        for _, r in sector_df.sort_values("avg_return_1d", ascending=False).iterrows():
             rows += (
-                f"<tr>"
-                f"<td class='left' style='color:#cbd5e1;'>{r.iloc[0]}</td>"
-                f"<td class='{cls}'>{ret:+.2f}%</td>"
-                f"<td>{r.iloc[2]:.0f}</td>"
-                f"<td>{mcap}</td>"
-                f"</tr>"
+                "<tr>"
+                f"<td class='name'>{r.get('sector','')}</td>"
+                f"<td>{int(r.get('stock_count', 0) or 0)}</td>"
+                f"<td>{int(r.get('advancers', 0) or 0)}</td>"
+                f"<td>{int(r.get('decliners', 0) or 0)}</td>"
+                f"<td>{fmt_pct(pd.to_numeric(r.get('avg_return_1d'), errors='coerce') * 100)}</td>"
+                f"<td>{fmt_pct(pd.to_numeric(r.get('avg_return_1w'), errors='coerce') * 100)}</td>"
+                f"<td>{fmt_pct(pd.to_numeric(r.get('avg_return_1m'), errors='coerce') * 100)}</td>"
+                f"<td>{fmt_cr(r.get('market_cap_sum_cr'))}</td>"
+                "</tr>"
             )
         table_wrap(
             f"""<table class='trm'>
                 <thead><tr>
-                  <th class='left'>Sector</th><th>Return</th>
-                  <th>Stocks</th><th>Mkt Cap</th>
+                    <th class='left'>Sector</th>
+                    <th>Stocks</th>
+                    <th>Adv.</th>
+                    <th>Dec.</th>
+                    <th>Avg 1D</th>
+                    <th>Avg 1W</th>
+                    <th>Avg 1M</th>
+                    <th>MCap</th>
                 </tr></thead>
                 <tbody>{rows}</tbody>
-              </table>""",
-            caption="Sector summary",
+            </table>"""
         )
-    else:
-        info_block("Sector data not available. Ensure universe.csv and prices.csv are populated.")
 
-# ── TAB 5: AI Market Brief ────────────────────────────────────────────────────
-with tab5:
-    section_label("AI-Generated Market Summary")
-
-    if not df.empty and "return_1d" in df.columns:
-        d_col = df["return_1d"].dropna()
-        gainers_list = df.nlargest(5, "return_1d")["ticker"].tolist() if not df.empty else []
-        losers_list  = df.nsmallest(5, "return_1d")["ticker"].tolist() if not df.empty else []
-        sec_summary  = {}
-        if not sec_df.empty and "return_1d" in sec_df.columns:
-            sec_summary = dict(zip(sec_df["sector"], sec_df["return_1d"].round(2)))
-
-        market_data = {
-            "nifty50_change": indices.get("nifty50", {}).get("change_pct", "N/A"),
-            "advancers":      int(advancers),
-            "decliners":      int(decliners),
-            "top_gainers":    gainers_list,
-            "top_losers":     losers_list,
-            "sector_moves":   sec_summary,
-        }
-
-        if st.button("Generate AI Market Summary"):
-            with st.spinner("Generating summary via Claude…"):
-                summary = ai.generate_market_summary(market_data)
-            ai_box(summary, "AI Market Summary")
-        else:
-            ai_box(
-                "Click 'Generate AI Market Summary' to get an AI-written market brief. "
-                "Requires ANTHROPIC_API_KEY in Settings.",
-                "AI Market Summary"
-            )
-    else:
-        warn_block("Load price data first to enable AI market summaries.")
-
-# ── TAB 6: What Changed Today ─────────────────────────────────────────────────
-with tab6:
+with tabs[5]:
     section_label("What Changed Today")
-
-    filings = load_filings()
-    news    = load_news()
-
-    # Recent filings
-    section_label("Corporate Filings — Last 48 Hours")
-    if filings.empty:
-        info_block("No filings loaded. Run scripts/update_filings.py to populate.")
+    if filtered_returns.empty:
+        info_block("No canonical snapshot available.")
     else:
-        recent = filings.head(10)
-        for _, row in recent.iterrows():
-            sentiment = row.get("sentiment", "neutral")
-            stype = row.get("type", "Filing")
-            col_map = {"positive": "#22c55e", "negative": "#ef4444", "neutral": "#64748b"}
-            col = col_map.get(str(sentiment).lower(), "#64748b")
-            ai_sum = row.get("ai_summary", "")
-            ai_html = f'<div class="fil-ai">{ai_sum}</div>' if ai_sum else ""
-            st.markdown(
-                f"""<div class="fil-row">
-                      <div class="fil-time">{str(row.get('date',''))[:10]}</div>
-                      <div class="fil-body">
-                        <div class="fil-title">
-                          <span style="color:#3b82f6;font-weight:600;">{row.get('ticker','')}</span>
-                          &nbsp;—&nbsp;{row.get('subject','')}
-                        </div>
-                        <div class="fil-meta">
-                          <span style="color:{col};">{str(sentiment).upper()}</span>
-                          &nbsp;|&nbsp;{stype}
-                          {' &nbsp;|&nbsp; <span style="color:#f59e0b;">MATERIAL</span>' if row.get('is_material') else ''}
-                        </div>
-                        {ai_html}
-                      </div>
-                    </div>""",
-                unsafe_allow_html=True,
-            )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    section_label("Key News — Last 48 Hours")
-    if news.empty:
-        info_block("No news loaded. Populate data/news.csv.")
-    else:
-        for _, row in news.head(8).iterrows():
-            stype = row.get("sentiment", "neutral")
-            col_map = {"positive": "#22c55e", "negative": "#ef4444", "neutral": "#64748b"}
-            col = col_map.get(str(stype).lower(), "#64748b")
-            st.markdown(
-                f"""<div class="fil-row">
-                      <div class="fil-time">{str(row.get('date',''))[:10]}</div>
-                      <div class="fil-body">
-                        <div class="fil-title">{row.get('headline','')}</div>
-                        <div class="fil-meta">
-                          {row.get('source','')} &nbsp;|&nbsp;
-                          <span style="color:{col};">{str(stype).upper()}</span>
-                          &nbsp;|&nbsp; {row.get('sector','')}
-                        </div>
-                        <div class="fil-ai">{row.get('ai_summary','')}</div>
-                      </div>
-                    </div>""",
-                unsafe_allow_html=True,
-            )
+        top_moves = filtered_returns.dropna(subset=["return_1d"]).copy()
+        top_moves = pd.concat([top_moves.nlargest(5, "return_1d"), top_moves.nsmallest(5, "return_1d")]).drop_duplicates("ticker")
+        bullets = []
+        for _, r in top_moves.iterrows():
+            ticker = str(r.get("ticker", "")).upper()
+            event = filing_map.get(ticker) or news_map.get(ticker) or "No clear public catalyst found."
+            bullets.append(f"- {ticker}: {r['return_1d'] * 100:+.2f}% — {event}")
+        recent_filings = filings_df.head(5) if not filings_df.empty else pd.DataFrame()
+        for _, r in recent_filings.iterrows():
+            ticker = str(r.get("ticker", "")).upper()
+            bullets.append(f"- {ticker}: filing — {r.get('subject','')}")
+        st.markdown("\n".join(bullets[:12]) if bullets else "No material public changes found.", unsafe_allow_html=False)

@@ -21,6 +21,9 @@ DATA  = ROOT / "data"
 
 UNIVERSE_CSV      = DATA / "universe.csv"
 PRICES_CSV        = DATA / "prices.csv"
+RETURNS_SNAPSHOT_CSV = DATA / "returns_snapshot.csv"
+SECTOR_PERFORMANCE_CSV = DATA / "sector_performance.csv"
+VOLUME_SHOCKS_CSV = DATA / "volume_shocks.csv"
 FUNDAMENTALS_CSV  = DATA / "fundamentals.csv"
 ORDER_BOOK_CSV    = DATA / "order_book.csv"
 FILINGS_CSV       = DATA / "filings.csv"
@@ -29,6 +32,9 @@ SECTORS_CSV       = DATA / "sectors.csv"
 NOTES_CSV         = DATA / "notes.csv"
 AI_SUMMARIES_CSV  = DATA / "ai_summaries.csv"
 QUARTERLY_CSV     = DATA / "quarterly_financials.csv"
+CORPORATE_ACTIONS_CSV = DATA / "corporate_actions.csv"
+DATA_QUALITY_LOG_CSV = DATA / "data_quality_log.csv"
+FAILED_TICKERS_CSV = DATA / "failed_tickers.csv"
 
 
 # ── Generic helpers ───────────────────────────────────────────────────────────
@@ -93,6 +99,65 @@ def load_prices() -> pd.DataFrame:
             df[c] = _to_float(df[c])
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    return df
+
+
+@st.cache_data(ttl=300)
+def load_returns_snapshot() -> pd.DataFrame:
+    df = _safe_read(RETURNS_SNAPSHOT_CSV)
+    if df.empty:
+        return pd.DataFrame()
+    if "ticker" in df.columns:
+        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    num_cols = [
+        "price","prev_close","volume","avg_volume_30d","volume_ratio_30d",
+        "return_1d","return_1w","return_1m","return_3m","return_6m","return_1y",
+        "high_52w","low_52w","dist_52w_high_pct","dist_52w_low_pct","market_cap_cr",
+    ]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = _to_float(df[c])
+    for c in ["date", "price_timestamp", "fundamentals_as_of", "updated_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    return df
+
+
+@st.cache_data(ttl=300)
+def load_sector_performance() -> pd.DataFrame:
+    df = _safe_read(SECTOR_PERFORMANCE_CSV)
+    if df.empty:
+        return pd.DataFrame()
+    num_cols = [
+        "stock_count","valid_return_count","advancers","decliners","unchanged",
+        "positive_pct","negative_pct","avg_return_1d","median_return_1d",
+        "avg_return_1w","avg_return_1m","market_cap_sum_cr",
+    ]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = _to_float(df[c])
+    for c in ["price_timestamp", "updated_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    return df
+
+
+@st.cache_data(ttl=300)
+def load_volume_shocks() -> pd.DataFrame:
+    df = _safe_read(VOLUME_SHOCKS_CSV)
+    if df.empty:
+        return pd.DataFrame()
+    if "ticker" in df.columns:
+        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    num_cols = [
+        "price","volume","avg_volume_30d","volume_ratio_30d","return_1d","return_1w","return_1m",
+    ]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = _to_float(df[c])
+    for c in ["date", "price_timestamp", "updated_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
     return df
 
 
@@ -190,6 +255,42 @@ def load_news() -> pd.DataFrame:
     return df.sort_values("date", ascending=False) if "date" in df.columns else df
 
 
+@st.cache_data(ttl=300)
+def load_corporate_actions() -> pd.DataFrame:
+    df = _safe_read(CORPORATE_ACTIONS_CSV)
+    if df.empty:
+        return pd.DataFrame()
+    if "ticker" in df.columns:
+        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    for c in ["announcement_date", "effective_date", "ingested_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    return df.sort_values("announcement_date", ascending=False) if "announcement_date" in df.columns else df
+
+
+@st.cache_data(ttl=300)
+def load_data_quality_log() -> pd.DataFrame:
+    df = _safe_read(DATA_QUALITY_LOG_CSV)
+    if df.empty:
+        return pd.DataFrame()
+    for c in ["last_refresh_at", "logged_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    return df.sort_values("logged_at", ascending=False) if "logged_at" in df.columns else df
+
+
+@st.cache_data(ttl=300)
+def load_failed_tickers() -> pd.DataFrame:
+    df = _safe_read(FAILED_TICKERS_CSV)
+    if df.empty:
+        return pd.DataFrame()
+    if "ticker" in df.columns:
+        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    if "failed_at" in df.columns:
+        df["failed_at"] = pd.to_datetime(df["failed_at"], errors="coerce")
+    return df.sort_values("failed_at", ascending=False) if "failed_at" in df.columns else df
+
+
 # ── Sectors ───────────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=86400)
@@ -245,6 +346,10 @@ def load_full_universe() -> pd.DataFrame:
     Merge universe + prices + fundamentals into a single wide DataFrame.
     This is the main data source for All Companies and screeners.
     """
+    snapshot = load_returns_snapshot()
+    if not snapshot.empty:
+        return snapshot.copy()
+
     uni   = load_universe()
     price = load_prices()
     fund  = load_fundamentals()

@@ -26,17 +26,24 @@ india_terminal/
 │   ├── charting.py                 # Plotly chart builders
 │   └── ai_summarizer.py            # Anthropic Claude API wrappers
 ├── scripts/
-│   ├── update_prices.py            # Daily price update (NSE bhavcopy or yfinance)
+│   ├── update_universe.py          # Official NSE NIFTY constituent loader
+│   ├── update_prices.py            # Canonical price/returns/sector/volume pipeline
 │   ├── update_filings.py           # Fetch NSE corporate announcements
 │   ├── generate_ai_summaries.py    # Batch AI summarisation of filings
 │   └── send_daily_email.py         # Morning (8:30 AM) + evening (4:30 PM) briefings
 ├── data/
-│   ├── universe.csv                # Master company list (manually maintained)
-│   ├── prices.csv                  # Daily price history + multi-period returns
+│   ├── universe.csv                # Canonical NIFTY universe with source metadata
+│   ├── prices.csv                  # Latest per-ticker price snapshot with metadata
+│   ├── returns_snapshot.csv        # Canonical merged return table for the app
+│   ├── sector_performance.csv      # Sector breadth/performance output
+│   ├── volume_shocks.csv           # Volume shock output
 │   ├── fundamentals.csv            # PE, EV/EBITDA, ROE, ROCE, etc. (Screener.in)
 │   ├── order_book.csv              # Order book database (manually maintained)
 │   ├── filings.csv                 # NSE corporate announcements
 │   ├── news.csv                    # News feed
+│   ├── corporate_actions.csv       # Canonical corporate actions structure
+│   ├── data_quality_log.csv        # Refresh and validation audit trail
+│   ├── failed_tickers.csv          # Ticker-level fetch failures
 │   ├── sectors.csv                 # Sector metadata
 │   └── notes.csv                   # Research notes
 └── .streamlit/
@@ -100,23 +107,32 @@ Open http://localhost:8501 in your browser.
 
 ## Initial Data Setup
 
-The terminal ships with sample data for ~130 companies. For live market data, run the update scripts in this order:
+The repository may contain old seeded CSVs from prior iterations. Phase 1 replaces them with canonical pipeline outputs. Do this first:
 
-### Step 1 — Full price history (run once)
+### Step 1 — Build the real NIFTY universe
 
 ```bash
-python scripts/update_prices.py --yf
+python scripts/update_universe.py --index 500
 ```
 
-This downloads 1 year of price history for all tickers in `data/universe.csv` via yfinance. Takes 3–5 minutes for 130+ tickers. After the initial run, the daily incremental update is much faster.
+This pulls the official NSE NIFTY 500 constituent file and writes `data/universe.csv` with source and timestamp metadata. The app should not be trusted until this step succeeds.
 
-### Step 2 — Daily price update (run after market close)
+### Step 2 — Build canonical prices, returns snapshot, sector performance, and volume shocks
 
 ```bash
 python scripts/update_prices.py
 ```
 
-Fetches NSE bhavcopy (official EOD data). Falls back to yfinance if bhavcopy is unavailable.
+This fetches a 1-year history via yfinance, overlays NSE bhavcopy when available for the latest day, then writes:
+
+- `data/prices.csv`
+- `data/returns_snapshot.csv`
+- `data/sector_performance.csv`
+- `data/volume_shocks.csv`
+- `data/data_quality_log.csv`
+- `data/failed_tickers.csv`
+
+If validation fails, the script keeps the previous healthy data in place and only logs the failure.
 
 ### Step 3 — Fetch corporate filings
 
@@ -147,8 +163,11 @@ python scripts/send_daily_email.py --test
 Add to crontab (`crontab -e`) — all times are IST (UTC+5:30):
 
 ```cron
-# NSE bhavcopy: 4:30 PM IST (11:00 UTC) Mon–Fri
-00 11 * * 1-5  cd /path/to/india_terminal && /path/to/.venv/bin/python scripts/update_prices.py
+# Universe refresh: Monday after close
+20 11 * * 1  cd /path/to/india_terminal && /path/to/.venv/bin/python scripts/update_universe.py --index 500
+
+# Prices and derived outputs: 4:50 PM IST (11:20 UTC) Mon–Fri
+20 11 * * 1-5  cd /path/to/india_terminal && /path/to/.venv/bin/python scripts/update_prices.py
 
 # Filings: 5:00 PM IST (11:30 UTC) Mon–Fri
 30 11 * * 1-5  cd /path/to/india_terminal && /path/to/.venv/bin/python scripts/update_filings.py
@@ -366,7 +385,12 @@ streamlit run app.py
 ```
 
 **All data shows as empty:**
-Run `python scripts/update_prices.py --yf` first to populate prices.csv.
+Run these in order:
+
+```bash
+python scripts/update_universe.py --index 500
+python scripts/update_prices.py
+```
 
 **AI summaries not working:**
 Check that `ANTHROPIC_API_KEY` is set in `.env`. Verify via Settings → API Keys → Test Claude API Connection.

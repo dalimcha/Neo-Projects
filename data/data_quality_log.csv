@@ -1,0 +1,5 @@
+run_id,dataset,universe,expected_rows,loaded_rows,valid_price_rows,valid_1d_rows,valid_sector_rows,valid_market_cap_rows,completeness_pct,status,source,last_refresh_at,details,logged_at
+universe_20260610_141119,universe,Nifty500,500,504,0,0,504,0,100.8,fresh,NSE Constituents,2026-06-10T14:11:21.252434+05:30,Fetched indices: Nifty500,2026-06-10T14:11:21.254352+05:30
+prices_20260610_142252,prices,Nifty500,500,504,500,500,504,20,100.8,fresh,NSE Bhavcopy + yfinance fallback,2026-06-10T14:25:05.808507+05:30,"{'loaded_rows': 504, 'valid_price_rows': 500, 'valid_1d_rows': 500, 'valid_sector_rows': 504, 'latest_price_date': '2026-06-10'}",2026-06-10T14:25:05.811236+05:30
+universe_20260610_150953,universe,Nifty500,500,500,0,0,500,0,100.0,fresh,NSE Constituents,2026-06-10T15:09:55.220540+05:30,Fetched indices: Nifty500,2026-06-10T15:09:55.222731+05:30
+prices_20260610_150955,prices,Nifty500,500,500,500,500,500,20,100.0,fresh,NSE Bhavcopy + yfinance fallback,2026-06-10T15:12:00.830415+05:30,"{'loaded_rows': 500, 'valid_price_rows': 500, 'valid_1d_rows': 500, 'valid_sector_rows': 500, 'latest_price_date': '2026-06-10'}",2026-06-10T15:12:00.836338+05:30
