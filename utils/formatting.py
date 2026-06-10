@@ -902,19 +902,24 @@ def page_header(
         f'color:#2d3f5a;margin-top:2px;">Page rendered {now_str}</div>'
     )
 
-    st.markdown(
-        f"""<div class="pg-header">
-              <div style="display:flex;align-items:baseline;gap:0.1rem;flex-wrap:wrap;">
-                <span class="pg-title">{title}</span>{sub_html}
-              </div>
-              <div style="text-align:right;">
-                {dot_html}
-                {data_ts_html}
-                {page_ts_html}
-              </div>
-            </div>""",
-        unsafe_allow_html=True,
-    )
+    left, right = st.columns([1.7, 1.0])
+    with left:
+        st.markdown(
+            f"""<div class="pg-header">
+                  <div style="display:flex;align-items:baseline;gap:0.1rem;flex-wrap:wrap;">
+                    <span class="pg-title">{title}</span>{sub_html}
+                  </div>
+                </div>""",
+            unsafe_allow_html=True,
+        )
+    with right:
+        right_html = "".join([x for x in [dot_html, data_ts_html, page_ts_html] if x])
+        st.markdown(
+            f"""<div style="padding-top:0.15rem;text-align:right;">
+                  {right_html}
+                </div>""",
+            unsafe_allow_html=True,
+        )
 
 
 def section_label(text: str) -> None:

@@ -57,6 +57,24 @@ def _last_refresh(log_df: pd.DataFrame, dataset: str) -> tuple[str, str]:
     return status, ts_str
 
 
+def _fallback_dataset_status(df: pd.DataFrame) -> tuple[str, str]:
+    if df.empty or "date" not in df.columns:
+        return "N/A", "N/A"
+    ts = pd.to_datetime(df["date"], errors="coerce").max()
+    if pd.isna(ts):
+        return "N/A", "N/A"
+    age_days = (pd.Timestamp.now() - ts).days
+    if age_days <= 2:
+        status = "Fresh"
+    elif age_days <= 7:
+        status = "Delayed"
+    elif age_days <= 30:
+        status = "Stale"
+    else:
+        status = "Cached"
+    return status, ts.strftime("%d %b %Y %H:%M")
+
+
 def _safe_text(value: object, fallback: str = "N/A") -> str:
     text = str(value or "").strip()
     return text if text else fallback
@@ -171,6 +189,10 @@ failed_df = load_failed_tickers()
 
 filings_status, filings_ts = _last_refresh(quality_log_df, "filings")
 news_status, news_ts = _last_refresh(quality_log_df, "news")
+if filings_status == "N/A":
+    filings_status, filings_ts = _fallback_dataset_status(filings_df)
+if news_status == "N/A":
+    news_status, news_ts = _fallback_dataset_status(news_df)
 
 with st.sidebar:
     st.markdown('<div class="sec-label">Refresh</div>', unsafe_allow_html=True)
@@ -208,7 +230,17 @@ with st.sidebar:
     type_filter = st.selectbox("Filing Type", type_opts)
     sentiment_filter = st.selectbox("Sentiment", sentiment_opts)
     material_only = st.checkbox("Material Only", value=False)
-    days_back = st.slider("Days Back", min_value=1, max_value=30, value=7)
+    latest_event_dt = pd.NaT
+    if not filings_df.empty and "date" in filings_df.columns:
+        latest_event_dt = pd.to_datetime(filings_df["date"], errors="coerce").max()
+    if not news_df.empty and "date" in news_df.columns:
+        latest_news_dt = pd.to_datetime(news_df["date"], errors="coerce").max()
+        if pd.notna(latest_news_dt) and (pd.isna(latest_event_dt) or latest_news_dt > latest_event_dt):
+            latest_event_dt = latest_news_dt
+    default_days = 30
+    if pd.notna(latest_event_dt) and (pd.Timestamp.now() - latest_event_dt).days > 30:
+        default_days = 730
+    days_back = st.slider("Days Back", min_value=1, max_value=730, value=default_days)
 
 page_header(
     "News & Filings",
@@ -217,6 +249,8 @@ page_header(
 
 if filings_status in {"Failed", "Stale"} and news_status in {"Failed", "Stale"}:
     warn_block("Both event feeds are stale or failed. Refresh filings and news before relying on move explanations.")
+elif filings_status == "Cached" or news_status == "Cached":
+    warn_block("You are looking at older seeded event data. Refresh filings and news to make this page usable for daily analysis.")
 
 section_label("Refresh Status")
 status_cols = st.columns(4)

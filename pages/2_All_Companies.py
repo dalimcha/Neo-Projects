@@ -180,7 +180,7 @@ else:
 
     pct_cols = [c for c in display.columns if c in RET_DISPLAY]
     for col in pct_cols:
-        style = style.applymap(_color_cell, subset=[col])
+        style = style.map(_color_cell, subset=[col])
 
     fmt_dict = {}
     for col in display.columns:

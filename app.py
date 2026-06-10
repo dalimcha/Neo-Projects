@@ -153,9 +153,9 @@ with right:
 section_label("Immediate Next Build")
 st.markdown(
     "\n".join([
-        "1. Rebuild `pages/2_All_Companies.py` against `returns_snapshot.csv` and `fundamentals.csv`.",
-        "2. Add manual fundamentals upload for Screener / Trendlyne / Bloomberg exports.",
-        "3. Rebuild `pages/4_Order_Book_Screener.py` only after fundamentals coverage is materially broader.",
+        "1. Finalise `pages/6_News_and_Filings.py` so biggest stock and sector movers have event context.",
+        "2. Rebuild `pages/2_All_Companies.py` against `returns_snapshot.csv` and `fundamentals.csv`.",
+        "3. Add manual fundamentals upload for Screener / Trendlyne / Bloomberg exports.",
         "4. Push `.github/workflows/` later with a token that has `workflow` scope.",
     ])
 )
