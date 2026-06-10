@@ -1,11 +1,16 @@
 """
 India Public Markets Intelligence Terminal
-──────────────────────────────────────────
-Main entry point. Sets global page config and renders the home/landing screen.
+
+Deployed entrypoint for the Streamlit multipage app.
+Keep this file at repo root and point Streamlit Cloud to `app.py`.
 """
 
-import streamlit as st
+from __future__ import annotations
+
 from datetime import datetime
+
+import pandas as pd
+import streamlit as st
 
 st.set_page_config(
     page_title="India Markets Terminal",
@@ -14,226 +19,143 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from utils.formatting import inject_css
 from utils.auth import require_password
+from utils.formatting import inject_css, page_header, section_label, kpi_card, info_block, warn_block
+from utils.data_loader import (
+    load_universe,
+    load_returns_snapshot,
+    load_fundamentals,
+    load_order_book,
+    load_data_quality_log,
+    load_failed_tickers,
+)
+from utils.validation import build_universe_report, render_data_quality_panel
+
 
 inject_css()
 require_password()
 
-# ── Sidebar branding ──────────────────────────────────────────────────────────
+
+def _latest_quality_status(log_df: pd.DataFrame, dataset: str = "prices") -> tuple[str | None, str | None]:
+    if log_df.empty or "dataset" not in log_df.columns:
+        return None, None
+    sub = log_df[log_df["dataset"].astype(str) == dataset].copy()
+    if sub.empty:
+        return None, None
+    if "last_refresh_at" in sub.columns:
+        sub["last_refresh_at"] = pd.to_datetime(sub["last_refresh_at"], errors="coerce")
+        sub = sub.sort_values("last_refresh_at")
+    row = sub.iloc[-1]
+    ts = row.get("last_refresh_at")
+    ts_str = ts.strftime("%d %b %Y %H:%M") if pd.notna(ts) else None
+    status = row.get("status")
+    return status.title() if isinstance(status, str) else None, ts_str
+
+
+def _latest_business_note(returns_df: pd.DataFrame) -> str:
+    if returns_df.empty or "return_1d" not in returns_df.columns:
+        return "No canonical returns snapshot loaded yet."
+    ret = pd.to_numeric(returns_df["return_1d"], errors="coerce").dropna()
+    if ret.empty:
+        return "Returns snapshot exists, but no valid 1D return values are available."
+    adv = int((ret > 0).sum())
+    dec = int((ret < 0).sum())
+    avg = ret.mean() * 100
+    return f"Breadth currently shows {adv} advancers vs {dec} decliners, with average 1D move {avg:+.2f}%."
+
+
+quality_log_df = load_data_quality_log()
+universe_df = load_universe()
+returns_df = load_returns_snapshot()
+fund_df = load_fundamentals()
+order_book_df = load_order_book()
+failed_df = load_failed_tickers()
+
+report = build_universe_report(
+    universe_label="Nifty 500",
+    universe_df=universe_df,
+    prices_df=returns_df.rename(columns={"price": "close"}),
+    fundamentals_df=fund_df,
+    failed_tickers=failed_df["ticker"].tolist() if not failed_df.empty and "ticker" in failed_df.columns else [],
+    source_prices="returns_snapshot.csv",
+    source_fundamentals="fundamentals.csv",
+    source_news="filings.csv / news.csv",
+)
+
+status, ts = _latest_quality_status(quality_log_df, "prices")
+page_header(
+    "India Public Markets Intelligence Terminal",
+    "Production entrypoint for the institutional tracker",
+    data_status=status or report.fetch_status,
+    data_ts=ts,
+)
+
 with st.sidebar:
     st.markdown(
-        """<div style="
-            padding: 1.25rem 1rem 1rem;
-            border-bottom: 1px solid #0f1929;
-            margin-bottom: 0.75rem;
-        ">
-          <div style="
-            font-size: 0.68rem; font-weight: 700; color: #1e3a5f;
-            text-transform: uppercase; letter-spacing: 0.14em;
-            margin-bottom: 0.25rem;
-          ">India Markets Terminal</div>
-          <div style="
-            font-size: 0.72rem; color: #1a2840; letter-spacing: 0.01em;
-          ">Institutional Research Platform</div>
-          <div style="
-            margin-top: 0.6rem; font-size: 0.62rem;
-            font-family: 'IBM Plex Mono', monospace; color: #141e30;
-          ">v1.0</div>
-        </div>""",
+        """
+        <div style="padding:1rem 0.75rem 0.9rem;border-bottom:1px solid #0f1929;margin-bottom:0.75rem;">
+          <div style="font-size:0.68rem;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:0.14em;">India Markets Terminal</div>
+          <div style="font-size:0.72rem;color:#3d5270;margin-top:0.2rem;">Deployment target: repo root <code>app.py</code></div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-# ── Page header ───────────────────────────────────────────────────────────────
-today = datetime.now()
-day_str  = today.strftime("%A")
-date_str = today.strftime("%d %B %Y")
+section_label("Control Center")
+render_data_quality_panel(report, compact=False)
 
-st.markdown(
-    f"""<div class="term-header">
-          <div>
-            <div class="term-title">India Public Markets<br>Intelligence Terminal</div>
-            <div class="term-tagline">
-              Institutional research platform for Indian listed equities
-              &nbsp;&nbsp;&middot;&nbsp;&nbsp;
-              {day_str}, {date_str}
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.62rem;color:#3d5270;
-                        font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;">
-              PAGE RENDERED
-            </div>
-            <div style="
-              font-family:'IBM Plex Mono',monospace; font-size:0.78rem;
-              color: #94a3b8; margin-top: 0.15rem;
-            ">{today.strftime("%H:%M IST")}</div>
-            <div style="font-size:0.6rem;color:#2d3f5a;margin-top:0.25rem;
-                        font-family:'IBM Plex Mono',monospace;">
-              Open Command Center for data freshness
-            </div>
-          </div>
-        </div>
-        <div style="height:1px;background:linear-gradient(90deg,#1e2d45 0%,#0f1929 60%,transparent 100%);margin-bottom:1.75rem;"></div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ── Module grid ───────────────────────────────────────────────────────────────
-MODULES = [
-    {
-        "title": "Market Command Center",
-        "num":   "01",
-        "desc":  "Daily market pulse — index snapshot, breadth, top movers, volume shocks, sector heatmap, and AI brief.",
-        "tags":  ["Daily Driver", "Market Overview"],
-    },
-    {
-        "title": "All Companies Database",
-        "num":   "02",
-        "desc":  "Nifty 500 universe with full return, valuation, fundamental, and institutional holding data.",
-        "tags":  ["Screener", "Universe"],
-    },
-    {
-        "title": "Order Book Mispricing Screener",
-        "num":   "04",
-        "desc":  "Core module. Proprietary 6-factor model scoring companies on order-book strength, execution quality, and valuation.",
-        "tags":  ["Core Module", "Alpha Generation"],
-        "primary": True,
-        "primary_label": "Primary Investment Module",
-    },
-    {
-        "title": "Company Detail Page",
-        "num":   "03",
-        "desc":  "Deep dive on individual companies — financials, valuation, peers, news, filings, AI note, and research notes.",
-        "tags":  ["Deep Dive", "Research"],
-    },
-    {
-        "title": "New Ideas Engine",
-        "num":   "05",
-        "desc":  "Automated flagging of stocks with OB > 2x revenue, strong inflows with weak price, and improving fundamentals.",
-        "tags":  ["Ideas", "Alerts"],
-    },
-    {
-        "title": "News & Filings",
-        "num":   "06",
-        "desc":  "NSE corporate announcements, order wins, and results — AI-classified by materiality and sentiment.",
-        "tags":  ["News", "Filings"],
-    },
-    {
-        "title": "Sector Intelligence",
-        "num":   "07",
-        "desc":  "Dedicated pages for 16 sectors — cycle position, key drivers, valuation comparison, and mispricing candidates.",
-        "tags":  ["Sector", "Macro"],
-    },
-    {
-        "title": "Settings & Data Management",
-        "num":   "08",
-        "desc":  "Configure API keys, email alerts, refresh data, manage universe, and run update scripts.",
-        "tags":  ["Settings", "Admin"],
-    },
+cols = st.columns(4)
+kpis = [
+    ("Universe", f"{len(universe_df)}", "loaded tickers"),
+    ("Valid Prices", f"{report.valid_price_rows}", "latest rows"),
+    ("Fundamentals", f"{len(fund_df)}", "companies covered"),
+    ("Order Book", f"{len(order_book_df)}", "database rows"),
 ]
+for col, (label, value, delta) in zip(cols, kpis):
+    with col:
+        kpi_card(label, value, delta)
 
-cols = st.columns(2, gap="medium")
+st.markdown("<br>", unsafe_allow_html=True)
 
-for i, mod in enumerate(MODULES):
-    with cols[i % 2]:
-        is_primary = mod.get("primary", False)
-        primary_cls = "primary" if is_primary else ""
-        num_cls     = "primary" if is_primary else ""
-        name_cls    = "primary" if is_primary else ""
+left, right = st.columns([1.2, 1.0], gap="large")
 
-        tags_html = "".join(
-            f'<span class="mod-tag">{t}</span>' for t in mod["tags"]
+with left:
+    section_label("Start Here")
+    st.page_link("pages/1_Market_Command_Center.py", label="Open Market Command Center", icon=":material/monitoring:")
+    st.page_link("pages/9_Data_Quality.py", label="Open Data Quality", icon=":material/fact_check:")
+    st.page_link("pages/2_All_Companies.py", label="Open All Companies", icon=":material/table_view:")
+    st.page_link("pages/4_Order_Book_Screener.py", label="Open Order Book Screener", icon=":material/account_balance:")
+
+    section_label("What This App Is Using")
+    st.markdown(
+        "\n".join([
+            "- Canonical prices: `data/returns_snapshot.csv`",
+            "- Sector analytics: `data/sector_performance.csv`",
+            "- Volume shocks: `data/volume_shocks.csv`",
+            "- Refresh audit trail: `data/data_quality_log.csv`",
+            "- Deployed entrypoint: repo root `app.py`",
+        ])
+    )
+
+with right:
+    section_label("Operational Note")
+    note = _latest_business_note(returns_df)
+    if report.passes:
+        info_block(
+            f"{note} The tracker is using the Phase 1 canonical datasets. "
+            "Next build priority is the All Companies screener and fundamentals ingestion."
+        )
+    else:
+        warn_block(
+            f"{note} The tracker is not yet trustworthy for downstream analytics because data quality gates are not passing."
         )
 
-        primary_badge = ""
-        if is_primary:
-            primary_badge = (
-                '<span style="'
-                'font-size:0.58rem;font-weight:700;text-transform:uppercase;'
-                'letter-spacing:0.08em;color:#2563eb;'
-                'background:rgba(37,99,235,0.1);border:1px solid #1e3a6b;'
-                'border-radius:4px;padding:0.18rem 0.55rem;margin-left:0.6rem;'
-                'vertical-align:middle;'
-                '">Core Module</span>'
-            )
-
-        arrow_html = (
-            '<span style="color:#1e3a5f;font-size:0.75rem;margin-left:auto;">→</span>'
-            if is_primary else ""
-        )
-
-        st.markdown(
-            f"""<div class="mod-card {primary_cls}">
-                  <div class="mod-num {num_cls}" style="justify-content:space-between;">
-                    <span>{mod['num']}</span>
-                    {arrow_html}
-                  </div>
-                  <div class="mod-name {name_cls}">
-                    {mod['title']}{primary_badge}
-                  </div>
-                  <div class="mod-desc">{mod['desc']}</div>
-                  <div class="mod-tags">{tags_html}</div>
-                </div>""",
-            unsafe_allow_html=True,
-        )
-
-# ── Status bar ────────────────────────────────────────────────────────────────
-from utils.data_loader import load_universe, load_order_book, load_fundamentals
-
-@st.cache_data(ttl=60)
-def _get_status():
-    uni  = load_universe()
-    ob   = load_order_book()
-    fund = load_fundamentals()
-    return len(uni), len(ob), len(fund)
-
-n_uni, n_ob, n_fund = _get_status()
-
-ob_verified = 0
-try:
-    import pandas as pd
-    ob_df = load_order_book()
-    if not ob_df.empty and "manually_verified" in ob_df.columns:
-        ob_verified = int(ob_df["manually_verified"].astype(str).str.lower().isin(["true","1","yes"]).sum())
-except Exception:
-    pass
-
+section_label("Immediate Next Build")
 st.markdown(
-    f"""<div class="data-bar">
-          <div class="data-bar-item">
-            <span>Universe</span>
-            <span class="val">{n_uni} companies</span>
-          </div>
-          <span class="data-bar-sep">/</span>
-          <div class="data-bar-item">
-            <span>Order Book DB</span>
-            <span class="val">{n_ob} entries</span>
-            <span style="color:#166534;font-size:0.6rem;">&nbsp;({ob_verified} verified)</span>
-          </div>
-          <span class="data-bar-sep">/</span>
-          <div class="data-bar-item">
-            <span>Fundamentals</span>
-            <span class="val">{n_fund} companies</span>
-          </div>
-          <span class="data-bar-sep">/</span>
-          <div class="data-bar-item">
-            <span>Data</span>
-            <span class="val" style="color:#1e2d45;">india_terminal/data/</span>
-          </div>
-        </div>""",
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """<div style="
-        font-size:0.67rem; color:#1a2840; margin-top:0.5rem;
-        font-family:'IBM Plex Mono',monospace; letter-spacing:0.02em;
-    ">
-      Use sidebar to navigate &nbsp;·&nbsp;
-      Run <code style="color:#1e3a5f;background:none;padding:0;">scripts/update_prices.py --yf</code>
-      to initialise price history &nbsp;·&nbsp;
-      Configure Claude API key in Settings for AI features
-    </div>""",
-    unsafe_allow_html=True,
+    "\n".join([
+        "1. Rebuild `pages/2_All_Companies.py` against `returns_snapshot.csv` and `fundamentals.csv`.",
+        "2. Add manual fundamentals upload for Screener / Trendlyne / Bloomberg exports.",
+        "3. Rebuild `pages/4_Order_Book_Screener.py` only after fundamentals coverage is materially broader.",
+        "4. Push `.github/workflows/` later with a token that has `workflow` scope.",
+    ])
 )
