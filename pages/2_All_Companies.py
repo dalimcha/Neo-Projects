@@ -82,6 +82,45 @@ for col in [
 if "market_cap_cr" in df.columns:
     df["mcap_bucket"] = df["market_cap_cr"].apply(_bucket_mcap)
 
+fund_coverage = int((df["pe"].notna() | df["roe"].notna()).sum()) if "pe" in df.columns else 0
+filing_coverage = int(df["latest_filing_date"].notna().sum()) if "latest_filing_date" in df.columns else 0
+
+st.markdown(
+    f"""
+    <div class="surface">
+      <div class="surface-title">Research Surface</div>
+      <div class="surface-note">
+        This page is the main working grid for company-level analysis. It combines canonical price
+        snapshot data with whatever fundamentals and event metadata are actually available. The right
+        way to improve this page further is to widen fundamentals coverage, not to invent missing fields.
+      </div>
+      <div class="mini-grid" style="margin-top:0.85rem;">
+        <div class="mini-stat">
+          <div class="mini-stat-k">Companies</div>
+          <div class="mini-stat-v">{len(df)}</div>
+          <div class="mini-stat-s">merged research rows</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-k">Fundamentals</div>
+          <div class="mini-stat-v">{fund_coverage}</div>
+          <div class="mini-stat-s">{fund_ts or 'no refresh log'}</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-k">Event Context</div>
+          <div class="mini-stat-v">{filing_coverage}</div>
+          <div class="mini-stat-s">latest filing metadata</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-k">Price Snapshot</div>
+          <div class="mini-stat-v">{price_ts or 'N/A'}</div>
+          <div class="mini-stat-s">canonical refresh</div>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 with st.sidebar:
     st.markdown('<div class="sec-label">Filters</div>', unsafe_allow_html=True)
     sectors = ["All"] + sorted(df["sector"].dropna().astype(str).unique().tolist()) if "sector" in df.columns else ["All"]
@@ -138,9 +177,9 @@ with cov_cols[0]:
 with cov_cols[1]:
     kpi_card("Universe", str(len(df)), "merged rows")
 with cov_cols[2]:
-    kpi_card("With Fundamentals", str(int((df["pe"].notna() | df["roe"].notna()).sum())) if "pe" in df.columns else "0", fund_ts or "No refresh log")
+    kpi_card("With Fundamentals", str(fund_coverage), fund_ts or "No refresh log")
 with cov_cols[3]:
-    kpi_card("With Filing Date", str(int(df["latest_filing_date"].notna().sum())) if "latest_filing_date" in df.columns else "0", "event context")
+    kpi_card("With Filing Date", str(filing_coverage), "event context")
 with cov_cols[4]:
     kpi_card("Price Snapshot", price_ts or "N/A", "latest refresh")
 
@@ -195,7 +234,7 @@ st.markdown(
     f"""<div style="font-size:0.72rem;color:#64748b;margin-bottom:0.6rem;">
     Showing <span style="color:#e2e8f0;font-weight:600;">{len(table_df)}</span> companies
     &nbsp;|&nbsp; Sorted by <span style="color:#60a5fa;">{sort_col}</span>
-    &nbsp;|&nbsp; Fundamentals coverage <span style="color:#e2e8f0;font-weight:600;">{int((df['pe'].notna() | df['roe'].notna()).sum()) if 'pe' in df.columns else 0}/{len(df)}</span>
+    &nbsp;|&nbsp; Fundamentals coverage <span style="color:#e2e8f0;font-weight:600;">{fund_coverage}/{len(df)}</span>
     </div>""",
     unsafe_allow_html=True,
 )

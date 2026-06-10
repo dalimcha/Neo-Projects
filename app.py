@@ -115,6 +115,42 @@ for col, (label, value, delta) in zip(cols, kpis):
 
 st.markdown("<br>", unsafe_allow_html=True)
 
+st.markdown(
+    f"""
+    <div class="surface">
+      <div class="surface-title">Terminal Focus</div>
+      <div class="surface-note">
+        This system is now centered on three operational loops: daily market breadth and movers,
+        event intelligence from filings and news, and a denser all-companies research grid for
+        meeting preparation. Design density is being raised alongside data coverage, not ahead of it.
+      </div>
+      <div class="mini-grid" style="margin-top:0.85rem;">
+        <div class="mini-stat">
+          <div class="mini-stat-k">Universe</div>
+          <div class="mini-stat-v">{len(universe_df)}</div>
+          <div class="mini-stat-s">listed companies tracked</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-k">Snapshot</div>
+          <div class="mini-stat-v">{len(returns_df)}</div>
+          <div class="mini-stat-s">canonical price rows</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-k">Fundamentals</div>
+          <div class="mini-stat-v">{len(fund_df)}</div>
+          <div class="mini-stat-s">currently populated</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-k">Status</div>
+          <div class="mini-stat-v">{status or report.fetch_status}</div>
+          <div class="mini-stat-s">{ts or 'timestamp unavailable'}</div>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 left, right = st.columns([1.2, 1.0], gap="large")
 
 with left:
@@ -126,13 +162,17 @@ with left:
 
     section_label("What This App Is Using")
     st.markdown(
-        "\n".join([
-            "- Canonical prices: `data/returns_snapshot.csv`",
-            "- Sector analytics: `data/sector_performance.csv`",
-            "- Volume shocks: `data/volume_shocks.csv`",
-            "- Refresh audit trail: `data/data_quality_log.csv`",
-            "- Deployed entrypoint: repo root `app.py`",
-        ])
+        """
+        <div class="surface">
+          <div class="surface-note">
+            Canonical prices come from <code>data/returns_snapshot.csv</code>. Sector analytics use
+            <code>data/sector_performance.csv</code>. Volume moves use <code>data/volume_shocks.csv</code>.
+            Refresh monitoring uses <code>data/data_quality_log.csv</code>. The deployed entrypoint remains
+            repo-root <code>app.py</code>.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 with right:
@@ -150,10 +190,16 @@ with right:
 
 section_label("Immediate Next Build")
 st.markdown(
-    "\n".join([
-        "1. Finalise `pages/6_News_and_Filings.py` so biggest stock and sector movers have event context.",
-        "2. Rebuild `pages/2_All_Companies.py` against `returns_snapshot.csv` and `fundamentals.csv`.",
-        "3. Add manual fundamentals upload for Screener / Trendlyne / Bloomberg exports.",
-        "4. Tighten page density and visual hierarchy after data coverage improves.",
-    ])
+    """
+    <div class="surface">
+      <div class="surface-title">Immediate Next Build</div>
+      <div class="surface-note">
+        1. Finish the event layer so biggest stock and sector movers always carry context.<br>
+        2. Harden the all-companies research grid around merged returns, fundamentals, and filing metadata.<br>
+        3. Import real fundamentals coverage from Screener, Trendlyne, or Bloomberg exports.<br>
+        4. Keep pushing density and visual hierarchy once the data surface is materially richer.
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
