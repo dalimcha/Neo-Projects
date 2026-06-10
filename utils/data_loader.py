@@ -238,8 +238,14 @@ def load_filings() -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
     df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    for c in ["date", "ingested_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    if "is_material" in df.columns:
+        df["is_material"] = df["is_material"].fillna(False).astype(bool)
+    for c in ["company_name", "type", "subject", "exchange", "source", "source_url", "ai_summary", "sentiment", "affected_metrics"]:
+        if c in df.columns:
+            df[c] = df[c].fillna("").astype(str).str.strip()
     return df.sort_values("date", ascending=False) if "date" in df.columns else df
 
 
@@ -250,8 +256,22 @@ def load_news() -> pd.DataFrame:
     df = _safe_read(NEWS_CSV)
     if df.empty:
         return pd.DataFrame()
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    for c in ["date", "ingested_at"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    if "tickers_mentioned" in df.columns:
+        df["tickers_mentioned"] = (
+            df["tickers_mentioned"]
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .str.strip()
+        )
+    if "is_material" in df.columns:
+        df["is_material"] = df["is_material"].fillna(False).astype(bool)
+    for c in ["headline", "source", "url", "sector", "sentiment", "ai_summary", "categories", "source_type"]:
+        if c in df.columns:
+            df[c] = df[c].fillna("").astype(str).str.strip()
     return df.sort_values("date", ascending=False) if "date" in df.columns else df
 
 
