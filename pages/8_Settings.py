@@ -200,21 +200,11 @@ with tabs[2]:
             _run_script("update_filings.py", "Filings Update")
 
     with col2:
-        if st.button("Update Fundamentals (Screener)"):
+        if st.button("Update Fundamentals (Manual Import)"):
             info_block(
-                "Fundamental data should be exported from Screener.in and placed in "
-                "data/fundamentals.csv. See README for export format."
+                "Use the upload section below to import Screener, Trendlyne, or Bloomberg exports "
+                "into data/fundamentals.csv via scripts/update_fundamentals.py."
             )
-        if st.button("Score Order Book DB"):
-            from utils.data_loader import load_order_book, save_order_book
-            from utils.scoring import score_order_book_df
-            ob = load_order_book()
-            if ob.empty:
-                warn_block("Order book is empty.")
-            else:
-                scored = score_order_book_df(ob)
-                save_order_book(scored)
-                ok_block(f"Scored {len(scored)} companies.")
 
     with col3:
         if st.button("Generate AI Summaries"):
@@ -224,34 +214,42 @@ with tabs[2]:
             ok_block("Caches cleared.")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    section_label("Upload Screener CSV")
+    section_label("Upload Fundamentals File")
     info_block(
-        "Export your Screener.in company list as CSV and upload here. "
-        "Required columns: Ticker, PE, EV/EBITDA, ROE, ROCE, D/E, Rev Gr %, etc."
+        "Upload a Screener, Trendlyne, or Bloomberg export. "
+        "The importer will normalize available columns into data/fundamentals.csv. "
+        "Missing fields remain blank; nothing is fabricated."
     )
-    uploaded = st.file_uploader("Upload Screener Export", type="csv")
+    source_type = st.selectbox("Source Type", ["screener", "trendlyne", "bloomberg"])
+    merge_mode = st.checkbox("Merge with existing fundamentals", value=True)
+    uploaded = st.file_uploader("Upload Fundamentals Export", type=["csv", "xlsx", "xls"])
     if uploaded:
         try:
-            df_up = pd.read_csv(uploaded)
+            if uploaded.name.lower().endswith((".xlsx", ".xls")):
+                df_up = pd.read_excel(uploaded)
+            else:
+                df_up = pd.read_csv(uploaded)
             st.dataframe(df_up.head(10), width="stretch")
             if st.button("Import to Fundamentals"):
-                col_map = {
-                    "Ticker": "ticker", "Name": "company_name",
-                    "PE": "pe", "EV/EBITDA": "ev_ebitda", "PB": "pb",
-                    "ROE": "roe", "ROCE": "roce", "D/E": "debt_equity",
-                    "Revenue Gr %": "revenue_growth_1y",
-                    "PAT Gr %": "pat_growth_1y",
-                    "EBITDA Margin %": "ebitda_margin",
-                    "Promoter Holding %": "promoter_holding",
-                    "FII Holding %": "fii_holding",
-                    "DII Holding %": "dii_holding",
-                }
-                df_up = df_up.rename(columns={k: v for k, v in col_map.items() if k in df_up.columns})
-                df_up["as_of_date"] = str(pd.Timestamp.today().date())
-                existing_fund = pd.read_csv(ROOT / "data" / "fundamentals.csv") if (ROOT / "data" / "fundamentals.csv").exists() else pd.DataFrame()
-                merged = pd.concat([existing_fund, df_up], ignore_index=True)
-                merged.to_csv(ROOT / "data" / "fundamentals.csv", index=False)
-                ok_block(f"Imported {len(df_up)} rows into fundamentals.csv.")
+                upload_path = ROOT / "data" / f"_uploaded_fundamentals{Path(uploaded.name).suffix.lower()}"
+                with open(upload_path, "wb") as f:
+                    f.write(uploaded.getbuffer())
+                cmd = [
+                    sys.executable,
+                    str(ROOT / "scripts" / "update_fundamentals.py"),
+                    "--import-csv",
+                    str(upload_path),
+                    "--source",
+                    source_type,
+                ]
+                if merge_mode:
+                    cmd.append("--merge")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if result.returncode == 0:
+                    ok_block("Fundamentals import completed.")
+                    st.cache_data.clear()
+                else:
+                    warn_block(f"Fundamentals import failed: {result.stderr[:300]}")
         except Exception as e:
             warn_block(f"Import failed: {e}")
 
@@ -310,9 +308,8 @@ Built for investment professionals managing exposure to the top listed companies
 - Market Command Center — daily market pulse
 - All Companies Database — Nifty 500 universe screener
 - Company Detail — deep dive with financials, filings, and AI notes
-- Order Book Mispricing Screener — proprietary 6-factor scoring model
+- News & Filings — event intelligence for explaining moves
 - New Ideas Engine — automated opportunity flagging
-- News & Filings — NSE announcements with AI classification
 - Sector Intelligence — sector cycle and valuation analysis
 - Daily Email Brief — morning + evening automated briefings
 
@@ -320,22 +317,7 @@ Built for investment professionals managing exposure to the top listed companies
 - NSE Bhavcopy (daily price data)
 - Screener.in CSV exports (fundamentals)
 - NSE Corporate Announcements API (filings)
-- Manual order book data entry (with source traceability)
 - Anthropic Claude API (AI summaries)
-
-**Order Book Scoring Model:**
-- 30% Order Book / Revenue
-- 20% Order Inflow Growth
-- 15% Revenue Growth
-- 15% Margin Stability
-- 10% Valuation vs Peers
-- 10% Balance Sheet Quality
-
-**Important Note on Order Book Data:**
-Order book numbers are manually entered and must be sourced from verified documents
-(concall transcripts, investor presentations, quarterly results). Every entry requires:
-source document, source date, extracted text snippet, confidence score, and
-manual verification flag. Do not rely on AI-extracted numbers without verification.
 
 **Version:** 1.0.0 | **Built with:** Streamlit, Pandas, Plotly, Anthropic Claude
 """,

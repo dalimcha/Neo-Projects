@@ -25,7 +25,6 @@ from utils.data_loader import (
     load_universe,
     load_returns_snapshot,
     load_fundamentals,
-    load_order_book,
     load_data_quality_log,
     load_failed_tickers,
 )
@@ -68,7 +67,6 @@ quality_log_df = load_data_quality_log()
 universe_df = load_universe()
 returns_df = load_returns_snapshot()
 fund_df = load_fundamentals()
-order_book_df = load_order_book()
 failed_df = load_failed_tickers()
 
 report = build_universe_report(
@@ -109,7 +107,7 @@ kpis = [
     ("Universe", f"{len(universe_df)}", "loaded tickers"),
     ("Valid Prices", f"{report.valid_price_rows}", "latest rows"),
     ("Fundamentals", f"{len(fund_df)}", "companies covered"),
-    ("Order Book", f"{len(order_book_df)}", "database rows"),
+    ("Snapshot Rows", f"{len(returns_df)}", "canonical rows"),
 ]
 for col, (label, value, delta) in zip(cols, kpis):
     with col:
@@ -124,7 +122,7 @@ with left:
     st.page_link("pages/1_Market_Command_Center.py", label="Open Market Command Center", icon=":material/monitoring:")
     st.page_link("pages/9_Data_Quality.py", label="Open Data Quality", icon=":material/fact_check:")
     st.page_link("pages/2_All_Companies.py", label="Open All Companies", icon=":material/table_view:")
-    st.page_link("pages/4_Order_Book_Screener.py", label="Open Order Book Screener", icon=":material/account_balance:")
+    st.page_link("pages/6_News_and_Filings.py", label="Open News & Filings", icon=":material/feed:")
 
     section_label("What This App Is Using")
     st.markdown(
@@ -156,6 +154,6 @@ st.markdown(
         "1. Finalise `pages/6_News_and_Filings.py` so biggest stock and sector movers have event context.",
         "2. Rebuild `pages/2_All_Companies.py` against `returns_snapshot.csv` and `fundamentals.csv`.",
         "3. Add manual fundamentals upload for Screener / Trendlyne / Bloomberg exports.",
-        "4. Push `.github/workflows/` later with a token that has `workflow` scope.",
+        "4. Tighten page density and visual hierarchy after data coverage improves.",
     ])
 )

@@ -367,12 +367,39 @@ def load_full_universe() -> pd.DataFrame:
     This is the main data source for All Companies and screeners.
     """
     snapshot = load_returns_snapshot()
-    if not snapshot.empty:
-        return snapshot.copy()
-
     uni   = load_universe()
     price = load_prices()
     fund  = load_fundamentals()
+    filings = load_filings()
+
+    if not snapshot.empty:
+        df = snapshot.copy()
+        if not fund.empty:
+            fund_latest = fund.sort_values("as_of_date") if "as_of_date" in fund.columns else fund
+            if "as_of_date" in fund.columns:
+                fund_latest = fund_latest.groupby("ticker", as_index=False).last()
+            df = df.merge(fund_latest, on="ticker", how="left", suffixes=("", "_fund"))
+            for col in ["company_name", "sector", "industry", "index_membership"]:
+                fund_col = f"{col}_fund"
+                if fund_col in df.columns:
+                    df[col] = df[col].fillna(df[fund_col])
+                    df = df.drop(columns=[fund_col])
+        if not filings.empty and "ticker" in filings.columns:
+            fil = filings.copy()
+            if "date" in fil.columns:
+                fil["date"] = pd.to_datetime(fil["date"], errors="coerce")
+                latest_filing = (
+                    fil.sort_values("date")
+                    .groupby("ticker", as_index=False)
+                    .last()[["ticker", "date", "type", "subject"]]
+                    .rename(columns={
+                        "date": "latest_filing_date",
+                        "type": "latest_filing_type",
+                        "subject": "latest_filing_subject",
+                    })
+                )
+                df = df.merge(latest_filing, on="ticker", how="left")
+        return df
 
     if uni.empty:
         return pd.DataFrame()
