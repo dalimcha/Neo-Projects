@@ -87,12 +87,33 @@ filing_coverage = int(df["latest_filing_date"].notna().sum()) if "latest_filing_
 
 st.markdown(
     f"""
-    <div class="surface">
-      <div class="surface-title">Research Surface</div>
-      <div class="surface-note">
-        This page is the main working grid for company-level analysis. It combines canonical price
-        snapshot data with whatever fundamentals and event metadata are actually available. The right
-        way to improve this page further is to widen fundamentals coverage, not to invent missing fields.
+    <div class="hero-panel">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div class="hero-sub">Research Surface</div>
+          <div style="
+            font-family:'Syne',sans-serif;
+            font-size:clamp(1.9rem,3vw,2.8rem);
+            font-weight:800;
+            line-height:1.02;
+            letter-spacing:-0.05em;
+            background:linear-gradient(135deg,#00d4ff 0%,#00ff88 100%);
+            -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;
+            background-clip:text;
+            color:transparent;
+          ">All Companies Working Grid</div>
+        </div>
+        <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+          <span class="pill-chip"><strong>Rows</strong>{len(df)}</span>
+          <span class="pill-chip"><strong>Fundamentals</strong>{fund_coverage}</span>
+          <span class="pill-chip"><strong>Filings</strong>{filing_coverage}</span>
+        </div>
+      </div>
+      <div class="surface-note" style="margin-top:0.85rem;">
+        This is the main working grid for company-level analysis. It combines canonical price
+        snapshot data with whatever fundamentals and event metadata are actually available.
+        The right way to improve it is to widen coverage, not invent missing fields.
       </div>
       <div class="mini-grid" style="margin-top:0.85rem;">
         <div class="mini-stat">
@@ -183,7 +204,24 @@ with cov_cols[3]:
 with cov_cols[4]:
     kpi_card("Price Snapshot", price_ts or "N/A", "latest refresh")
 
+if fund_coverage < 100:
+    info_block(
+        f"Price coverage is strong, but only {fund_coverage}/{len(df)} names currently have fundamentals. "
+        "This is why valuation, growth, and holding columns still look sparse. Import the Screener export to unlock the full research grid."
+    )
+
 section_label("Table")
+
+st.markdown(
+    """
+    <div style="display:flex;gap:0.55rem;flex-wrap:wrap;margin:0 0 0.7rem 0;">
+      <span class="pill-chip"><strong>View</strong>Research Grid</span>
+      <span class="pill-chip"><strong>Density</strong>High</span>
+      <span class="pill-chip"><strong>Mode</strong>Price + Fundamentals + Filings</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 display_cols = [
     "ticker", "company_name", "sector", "industry", "mcap_bucket", "market_cap_cr", "price",

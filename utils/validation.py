@@ -14,6 +14,7 @@ that shows partial data is worse than one that admits it has no data.
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
+from html import escape
 from typing import Optional
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -255,95 +256,96 @@ def render_data_quality_panel(rep: UniverseReport, compact: bool = False) -> Non
     """
     fg, bg = _STATUS_COLOR.get(rep.fetch_status, ("#dc2626", "#450a0a"))
 
+    def _fmt_ts(ts: Optional[datetime], fmt: str) -> str:
+        if ts is None:
+            return "—"
+        return escape(ts.strftime(fmt))
+
     if compact:
-        # Sidebar mini-panel
-        rows = "".join([
-            f'<div style="display:flex;justify-content:space-between;font-size:0.66rem;'
-            f'color:#64748b;margin-top:0.15rem;">'
-            f'<span>{k}</span><span style="color:#94a3b8;font-family:\'IBM Plex Mono\',monospace;">{v}</span></div>'
-            for k, v in [
-                ("Universe",      rep.universe),
-                ("Loaded",        f"{rep.actual_loaded}/{rep.expected_count}"),
-                ("Valid prices",  str(rep.valid_price_rows)),
-                ("Valid 1D ret",  str(rep.valid_1d_return_rows)),
-                ("Completeness",  f"{rep.completeness_pct:.0f}%"),
-                ("Price source",  rep.data_source_prices),
-                ("Last fetch",    rep.last_price_fetch.strftime("%d %b %H:%M")
-                                  if rep.last_price_fetch else "—"),
+        rows = "".join(
+            [
+                f"<div style='display:flex;justify-content:space-between;gap:0.75rem;"
+                f"font-size:0.68rem;color:#7f93b1;margin-top:0.22rem;'>"
+                f"<span>{escape(k)}</span>"
+                f"<span style=\"color:#d7e3f4;font-family:'JetBrains Mono',monospace;text-align:right;\">{escape(v)}</span>"
+                f"</div>"
+                for k, v in [
+                    ("Universe", rep.universe),
+                    ("Loaded", f"{rep.actual_loaded}/{rep.expected_count}"),
+                    ("Valid prices", str(rep.valid_price_rows)),
+                    ("Valid 1D ret", str(rep.valid_1d_return_rows)),
+                    ("Completeness", f"{rep.completeness_pct:.0f}%"),
+                    ("Price source", rep.data_source_prices),
+                    ("Last fetch", _fmt_ts(rep.last_price_fetch, "%d %b %H:%M")),
+                ]
             ]
-        ])
+        )
         st.markdown(
-            f"""<div style="
-                background:{bg}; border:1px solid {fg}33;
-                border-left:3px solid {fg}; border-radius:5px;
-                padding:0.65rem 0.8rem; margin-top:0.5rem;
-            ">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:0.61rem;font-weight:700;letter-spacing:0.1em;
-                             text-transform:uppercase;color:{fg};">Data Quality</span>
-                <span style="font-size:0.62rem;font-weight:700;color:{fg};
-                             font-family:'IBM Plex Mono',monospace;">{rep.fetch_status.upper()}</span>
+            f"""<div class="surface" style="margin-top:0.45rem;border-color:{fg}55;background:
+            linear-gradient(180deg, rgba(11,18,33,0.95), rgba(9,14,28,0.98));">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;">
+                <span style="font-size:0.64rem;font-weight:800;letter-spacing:0.14em;
+                text-transform:uppercase;color:{fg};">Data Quality</span>
+                <span class="pill-chip" style="border-color:{fg}55;color:{fg};background:{bg};">
+                  {escape(rep.fetch_status.upper())}
+                </span>
               </div>
-              {rows}
+              <div style="margin-top:0.45rem;">{rows}</div>
             </div>""",
             unsafe_allow_html=True,
         )
         return
 
-    # Full banner
     fail_html = ""
     if not rep.passes:
         items = "".join(
-            f"<li style='margin-bottom:0.2rem;'>{r}</li>" for r in rep.failure_reasons
+            f"<li style='margin-bottom:0.28rem;'>{escape(r)}</li>" for r in rep.failure_reasons
         )
         fail_html = (
-            f'<ul style="margin:0.5rem 0 0 1.2rem;color:#fca5a5;font-size:0.78rem;'
+            f'<ul style="margin:0.6rem 0 0 1.1rem;color:#fca5a5;font-size:0.78rem;'
             f'line-height:1.5;">{items}</ul>'
             '<div style="margin-top:0.5rem;font-size:0.74rem;color:#fbbf24;">'
             'Analytics disabled until data quality passes.</div>'
         )
 
-    timestamps = "".join([
-        f'<div style="display:flex;flex-direction:column;gap:0.1rem;">'
-        f'<span style="font-size:0.6rem;letter-spacing:0.1em;color:#3d5270;'
-        f'text-transform:uppercase;font-weight:700;">{k}</span>'
-        f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.74rem;color:#94a3b8;">'
-        f'{v}</span></div>'
-        for k, v in [
-            ("Universe",
-             f"{rep.universe} ({rep.actual_loaded}/{rep.expected_count})"),
-            ("Completeness",
-             f"{rep.completeness_pct:.1f}%"),
-            ("Price source",
-             rep.data_source_prices),
-            ("Last price",
-             rep.last_price_fetch.strftime("%d %b %Y %H:%M") if rep.last_price_fetch else "—"),
-            ("Last fundamentals",
-             rep.last_fundamentals_fetch.strftime("%d %b %Y") if rep.last_fundamentals_fetch else "—"),
-            ("Last news",
-             rep.last_news_fetch.strftime("%d %b %H:%M") if rep.last_news_fetch else "—"),
+    timestamps = "".join(
+        [
+            f"<div class='mini-stat' style='min-height:unset;padding:0.9rem 0.95rem;'>"
+            f"<div class='mini-stat-k'>{escape(k)}</div>"
+            f"<div class='mini-stat-v' style='font-size:1rem;'>{escape(v)}</div>"
+            f"</div>"
+            for k, v in [
+                ("Universe", f"{rep.universe} ({rep.actual_loaded}/{rep.expected_count})"),
+                ("Completeness", f"{rep.completeness_pct:.1f}%"),
+                ("Price source", rep.data_source_prices),
+                ("Last price", _fmt_ts(rep.last_price_fetch, "%d %b %Y %H:%M")),
+                ("Last fundamentals", _fmt_ts(rep.last_fundamentals_fetch, "%d %b %Y")),
+                ("Last news", _fmt_ts(rep.last_news_fetch, "%d %b %H:%M")),
+            ]
         ]
-    ])
+    )
 
     st.markdown(
-        f"""<div style="
-            background:{bg}; border:1px solid {fg}55;
-            border-left:4px solid {fg}; border-radius:6px;
-            padding:1rem 1.25rem; margin-bottom:1.25rem;
-        ">
-          <div style="display:flex;justify-content:space-between;align-items:center;
-                      margin-bottom:0.6rem;">
+        f"""<div class="hero-panel" style="padding:1.05rem 1.15rem 1rem;margin-bottom:1.1rem;
+        border-color:{fg}55;background:
+        linear-gradient(135deg, rgba(10,18,33,0.96), rgba(12,20,38,0.98) 45%, {bg});">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
             <div>
-              <span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;
-                           color:{fg};text-transform:uppercase;">Data Quality</span>
-              <span style="font-size:0.95rem;font-weight:600;color:{fg};margin-left:0.65rem;
-                           font-family:'IBM Plex Mono',monospace;">{rep.fetch_status.upper()}</span>
+              <div class="hero-sub" style="color:{fg};">Data Quality</div>
+              <div class="hero-title" style="font-size:1.45rem;margin-top:0.1rem;color:#f8fbff;">
+                {escape(rep.fetch_status.upper())}
+              </div>
             </div>
-            <div style="font-size:0.66rem;color:#3d5270;font-family:'IBM Plex Mono',monospace;">
-              {len(rep.failed_tickers)} failed tickers
+            <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+              <span class="pill-chip" style="border-color:{fg}44;color:{fg};background:{bg};">
+                {escape(rep.universe)}
+              </span>
+              <span class="pill-chip">
+                {escape(f'{len(rep.failed_tickers)} failed tickers')}
+              </span>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;">
+          <div class="mini-grid" style="margin-top:0.9rem;grid-template-columns:repeat(6,minmax(0,1fr));">
             {timestamps}
           </div>
           {fail_html}

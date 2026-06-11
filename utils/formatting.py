@@ -12,23 +12,23 @@ from datetime import datetime
 from typing import Optional
 
 # ── Colour palette ────────────────────────────────────────────────────────────
-BG       = "#0c1320"
-BG2      = "#111827"
-BG3      = "#0f1929"
-BG4      = "#0a1020"
-BORDER   = "#1e2d45"
-BORDER2  = "#2d3f5a"
-TEXT     = "#e2e8f0"
-TEXT2    = "#94a3b8"
+BG       = "#0a0e27"
+BG2      = "#141b3d"
+BG3      = "#1a2347"
+BG4      = "#0f1533"
+BORDER   = "#2d3a5f"
+BORDER2  = "#3a4a76"
+TEXT     = "#ffffff"
+TEXT2    = "#a0aec0"
 TEXT3    = "#64748b"
-TEXT4    = "#475569"
-ACCENT   = "#3b82f6"
-ACCENT2  = "#2563eb"
-POS      = "#22c55e"
-NEG      = "#ef4444"
-WARN     = "#f59e0b"
-PURPLE   = "#a78bfa"
-TEAL     = "#2dd4bf"
+TEXT4    = "#4b5d82"
+ACCENT   = "#00d4ff"
+ACCENT2  = "#00ff88"
+POS      = "#00ff88"
+NEG      = "#ff3366"
+WARN     = "#ffd900"
+PURPLE   = "#8b7cff"
+TEAL     = "#00d4ff"
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 def inject_css() -> None:
@@ -37,13 +37,13 @@ def inject_css() -> None:
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
 
 /* ── Reset & Base ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, [class*="css"] {
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+    font-family: 'Space Mono', monospace !important;
 }
 
 /* ── Hide Streamlit chrome ─────────────────────────────────── */
@@ -57,11 +57,12 @@ footer { display: none; }
 /* ── App background — subtle radial depth ──────────────────── */
 .stApp {
     background:
-        radial-gradient(circle at 14% 8%, rgba(56,189,248,0.08) 0%, transparent 24%),
-        radial-gradient(circle at 78% 0%, rgba(59,130,246,0.10) 0%, transparent 30%),
-        radial-gradient(circle at 100% 62%, rgba(45,212,191,0.05) 0%, transparent 24%),
-        radial-gradient(ellipse at 0% 80%, rgba(15,25,41,0.85) 0%, transparent 50%),
-        #0c1320 !important;
+        linear-gradient(rgba(26,35,71,0.24) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(26,35,71,0.24) 1px, transparent 1px),
+        radial-gradient(circle at 18% 10%, rgba(0,212,255,0.10) 0%, transparent 22%),
+        radial-gradient(circle at 82% 0%, rgba(0,255,136,0.08) 0%, transparent 22%),
+        #0a0e27 !important;
+    background-size: 100px 100px, 100px 100px, auto, auto !important;
 }
 .main, section.main > div { background: transparent !important; }
 
@@ -76,10 +77,9 @@ footer { display: none; }
 
 /* ── Sidebar ───────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background:
-        linear-gradient(180deg, rgba(8,14,28,0.98) 0%, rgba(12,19,32,0.98) 100%) !important;
-    border-right: 1px solid #141e30 !important;
-    box-shadow: inset -1px 0 0 rgba(255,255,255,0.02), 10px 0 30px rgba(0,0,0,0.20) !important;
+    background: #141b3d !important;
+    border-right: 1px solid #2d3a5f !important;
+    box-shadow: inset -1px 0 0 rgba(255,255,255,0.03), 10px 0 30px rgba(0,0,0,0.24) !important;
 }
 [data-testid="stSidebarContent"] {
     padding-top: 0 !important;
@@ -87,9 +87,9 @@ footer { display: none; }
 
 /* Sidebar nav links */
 [data-testid="stSidebarNavLink"] {
-    font-size: 0.77rem !important;
-    font-weight: 500 !important;
-    color: #5c7190 !important;
+    font-size: 0.80rem !important;
+    font-weight: 600 !important;
+    color: #a0aec0 !important;
     padding: 0.5rem 0.9rem !important;
     margin: 2px 8px !important;
     border-radius: 8px !important;
@@ -98,17 +98,17 @@ footer { display: none; }
     border: 1px solid transparent !important;
 }
 [data-testid="stSidebarNavLink"]:hover {
-    color: #dbeafe !important;
-    background: rgba(18,31,52,0.72) !important;
-    border-color: rgba(59,130,246,0.14) !important;
+    color: #ffffff !important;
+    background: #1a2347 !important;
+    border-color: rgba(0,212,255,0.22) !important;
     transform: translateX(1px) !important;
 }
 [data-testid="stSidebarNavLink"][aria-current="page"] {
-    color: #dbeafe !important;
-    background: linear-gradient(180deg, rgba(30,58,138,0.22) 0%, rgba(30,64,175,0.12) 100%) !important;
-    border-color: rgba(59,130,246,0.20) !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(0,255,136,0.12)) !important;
+    border-color: rgba(0,255,136,0.26) !important;
     font-weight: 500 !important;
-    box-shadow: 0 0 0 1px rgba(59,130,246,0.08), 0 6px 16px rgba(0,0,0,0.18) !important;
+    box-shadow: 0 0 0 1px rgba(0,212,255,0.12), 0 6px 16px rgba(0,0,0,0.22) !important;
 }
 [data-testid="stSidebarNavLink"][aria-current="page"]::before {
     content: '';
@@ -117,46 +117,53 @@ footer { display: none; }
     top: 20%;
     height: 60%;
     width: 2px;
-    background: #3b82f6;
+    background: linear-gradient(180deg, #00d4ff, #00ff88);
     border-radius: 0 2px 2px 0;
 }
 [data-testid="stSidebarNavLink"] { position: relative !important; }
 
 /* ── Typography ────────────────────────────────────────────── */
 h1 {
-    font-size: 1.1rem !important; font-weight: 600 !important;
-    color: #e2e8f0 !important; letter-spacing: -0.015em !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 3rem !important; font-weight: 800 !important;
+    background: linear-gradient(135deg, #00d4ff, #00ff88);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent !important;
+    letter-spacing: -0.04em !important;
     line-height: 1.3 !important;
 }
 h2 {
-    font-size: 0.8rem !important; font-weight: 600 !important;
-    color: #94a3b8 !important; text-transform: uppercase !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 0.95rem !important; font-weight: 700 !important;
+    color: #ffffff !important; text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
 }
 h3 {
-    font-size: 0.7rem !important; font-weight: 500 !important;
-    color: #475569 !important; text-transform: uppercase !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 0.78rem !important; font-weight: 700 !important;
+    color: #a0aec0 !important; text-transform: uppercase !important;
     letter-spacing: 0.09em !important;
 }
 p, .stMarkdown p {
-    font-size: 0.82rem !important; color: #94a3b8 !important;
+    font-size: 0.82rem !important; color: #a0aec0 !important;
     line-height: 1.68 !important;
 }
 code {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.8em !important; color: #60a5fa !important;
-    background: rgba(59,130,246,0.1) !important;
+    font-family: 'Space Mono', monospace !important;
+    font-size: 0.8em !important; color: #00d4ff !important;
+    background: rgba(0,212,255,0.1) !important;
     padding: 0.1em 0.35em !important; border-radius: 3px !important;
 }
 
 /* ── Metrics ───────────────────────────────────────────────── */
 [data-testid="stMetric"] {
-    background:
-        linear-gradient(180deg, rgba(20,30,48,0.98) 0%, rgba(15,25,41,0.98) 100%) !important;
-    border: 1px solid #1f314c !important;
-    border-radius: 10px !important;
+    background: #141b3d !important;
+    border: 1px solid #2d3a5f !important;
+    border-radius: 12px !important;
     padding: 0.9rem 1.1rem !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.03) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.03) !important;
     transition: border-color 0.15s, box-shadow 0.15s !important;
     position: relative;
     overflow: hidden;
@@ -168,67 +175,70 @@ code {
 [data-testid="stMetric"]::before {
     content: '';
     position: absolute;
-    inset: 0 auto auto 0;
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(59,130,246,0), rgba(59,130,246,0.55), rgba(59,130,246,0));
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #00d4ff, #00ff88);
 }
 [data-testid="stMetricLabel"] p {
-    font-size: 0.61rem !important; text-transform: uppercase !important;
-    letter-spacing: 0.1em !important; color: #475569 !important;
+    font-family: 'Space Mono', monospace !important;
+    font-size: 0.72rem !important; text-transform: uppercase !important;
+    letter-spacing: 0.1em !important; color: #64748b !important;
     font-weight: 600 !important;
 }
 [data-testid="stMetricValue"] {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 1.25rem !important; font-weight: 600 !important;
-    color: #e2e8f0 !important; letter-spacing: -0.02em !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 2rem !important; font-weight: 700 !important;
+    color: #ffffff !important; letter-spacing: -0.03em !important;
 }
 [data-testid="stMetricDelta"] { font-size: 0.71rem !important; }
 
 /* ── Tabs ──────────────────────────────────────────────────── */
 .stTabs [data-baseweb="tab-list"] {
     gap: 0.35rem !important;
-    background: rgba(8,14,28,0.78) !important;
-    border: 1px solid #162338 !important;
+    background: transparent !important;
+    border: none !important;
     border-radius: 10px !important;
-    padding: 0.35rem !important;
+    padding: 0 !important;
     margin-bottom: 0.35rem !important;
 }
 .stTabs [data-baseweb="tab"] {
-    font-size: 0.69rem !important; font-weight: 500 !important;
-    color: #55708f !important; text-transform: uppercase !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 0.82rem !important; font-weight: 700 !important;
+    color: #a0aec0 !important; text-transform: uppercase !important;
     letter-spacing: 0.09em !important;
-    padding: 0.52rem 0.95rem !important;
-    background: transparent !important;
-    border: 1px solid transparent !important;
+    padding: 0.7rem 1.35rem !important;
+    background: #1a2347 !important;
+    border: 2px solid #2d3a5f !important;
     border-radius: 8px !important;
     transition: color 0.12s, background 0.12s, border-color 0.12s !important;
 }
 .stTabs [data-baseweb="tab"]:hover { color: #94a3b8 !important; }
 .stTabs [aria-selected="true"] {
-    color: #dbeafe !important;
-    background: linear-gradient(180deg, rgba(28,48,79,0.95) 0%, rgba(16,28,46,0.95) 100%) !important;
-    border: 1px solid rgba(59,130,246,0.22) !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 4px 12px rgba(0,0,0,0.18) !important;
+    color: #0a0e27 !important;
+    background: linear-gradient(135deg, #00d4ff, #00ff88) !important;
+    border: 2px solid #00ff88 !important;
+    box-shadow: 0 8px 24px rgba(0,212,255,0.22) !important;
 }
 .stTabs [data-baseweb="tab-panel"] { padding-top: 1.25rem !important; }
 
 /* ── Buttons ───────────────────────────────────────────────── */
 .stButton > button {
-    background: linear-gradient(180deg, rgba(14,22,36,0.96) 0%, rgba(12,19,32,0.96) 100%) !important;
-    border: 1px solid #233551 !important;
-    color: #8ea7c7 !important;
-    font-size: 0.73rem !important; font-weight: 500 !important;
-    letter-spacing: 0.03em !important; border-radius: 5px !important;
+    background: linear-gradient(135deg, #00d4ff, #00ff88) !important;
+    border: none !important;
+    color: #0a0e27 !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 0.78rem !important; font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important; border-radius: 8px !important;
     padding: 0.4rem 0.9rem !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
     transition: all 0.15s !important;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.03) !important;
+    box-shadow: 0 8px 22px rgba(0,212,255,0.18) !important;
 }
 .stButton > button:hover {
-    border-color: #3b82f6 !important; color: #93c5fd !important;
-    background: linear-gradient(180deg, rgba(16,29,49,0.98) 0%, rgba(13,22,37,0.98) 100%) !important;
-    box-shadow: 0 0 0 1px rgba(59,130,246,0.18), 0 10px 22px rgba(0,0,0,0.22) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 26px rgba(0,212,255,0.30) !important;
 }
 .stButton > button:active {
     transform: translateY(0) !important;
@@ -247,8 +257,8 @@ code {
 
 /* ── Inputs / Selects ──────────────────────────────────────── */
 [data-baseweb="select"] > div {
-    background: linear-gradient(180deg, rgba(12,19,32,0.98) 0%, rgba(15,25,41,0.98) 100%) !important;
-    border-color: #1f314c !important;
+    background: #1a2347 !important;
+    border-color: #2d3a5f !important;
     border-radius: 8px !important;
     min-height: 38px !important;
     transition: border-color 0.15s, box-shadow 0.15s !important;
@@ -258,10 +268,10 @@ code {
     border-color: #3b82f6 !important;
     box-shadow: 0 0 0 2px rgba(59,130,246,0.15) !important;
 }
-[data-baseweb="select"] * { color: #cbd5e1 !important; font-size: 0.81rem !important; }
-[data-baseweb="popover"] { background: #111827 !important; border: 1px solid #1e2d45 !important; }
-[data-baseweb="menu-item"] { background: #111827 !important; color: #94a3b8 !important; font-size: 0.81rem !important; }
-[data-baseweb="menu-item"]:hover { background: #1a2840 !important; }
+[data-baseweb="select"] * { color: #ffffff !important; font-size: 0.81rem !important; }
+[data-baseweb="popover"] { background: #141b3d !important; border: 1px solid #2d3a5f !important; }
+[data-baseweb="menu-item"] { background: #141b3d !important; color: #a0aec0 !important; font-size: 0.81rem !important; }
+[data-baseweb="menu-item"]:hover { background: #1a2347 !important; }
 
 .stTextInput input, .stNumberInput input {
     background: linear-gradient(180deg, rgba(12,19,32,0.98) 0%, rgba(15,25,41,0.98) 100%) !important;
@@ -295,29 +305,31 @@ code {
 
 /* ── Dataframe ─────────────────────────────────────────────── */
 [data-testid="stDataFrame"] {
-    border: 1px solid #1d304c !important;
-    border-radius: 10px !important; overflow: hidden !important;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.18) !important;
-    background: rgba(10,16,32,0.82) !important;
+    border: 1px solid #2d3a5f !important;
+    border-radius: 12px !important; overflow: hidden !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.22) !important;
+    background: #141b3d !important;
 }
 [data-testid="stDataFrameResizable"] {
     border-radius: 10px !important;
 }
 [data-testid="stDataFrame"] [role="columnheader"] {
-    background: #091120 !important;
-    color: #7f95b2 !important;
-    font-size: 0.66rem !important;
+    background: #1a2347 !important;
+    color: #a0aec0 !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 0.72rem !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
-    border-bottom: 1px solid #15233a !important;
+    border-bottom: 2px solid #2d3a5f !important;
 }
 [data-testid="stDataFrame"] [role="gridcell"] {
-    font-size: 0.76rem !important;
-    color: #cbd5e1 !important;
-    border-bottom: 1px solid #0f1929 !important;
+    font-size: 0.84rem !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid #2d3a5f !important;
+    font-family: 'Space Mono', monospace !important;
 }
 [data-testid="stDataFrame"] [data-testid="stDataFrameRow"]:hover [role="gridcell"] {
-    background: rgba(15,25,41,0.75) !important;
+    background: #1a2347 !important;
 }
 
 /* ── Expanders ─────────────────────────────────────────────── */
@@ -380,14 +392,20 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
     border-radius: 2px;
 }
 .pg-title {
-    font-size: 1.12rem; font-weight: 600;
-    color: #e2e8f0; letter-spacing: -0.015em;
+    font-family: 'Syne', sans-serif;
+    font-size: 2.4rem; font-weight: 800;
+    background: linear-gradient(135deg, #00d4ff, #00ff88);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.04em;
 }
 .pg-subtitle {
-    font-size: 0.72rem; color: #58718f; margin-left: 0.85rem;
+    font-size: 0.76rem; color: #6f8aac; margin-left: 0.85rem;
 }
 .pg-ts {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.67rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.67rem;
     color: #2d3f5a; letter-spacing: 0.02em;
 }
 
@@ -409,9 +427,9 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
 
 /* ── KPI card ──────────────────────────────────────────────── */
 .kpi {
-    background: linear-gradient(180deg, rgba(20,30,48,0.98) 0%, rgba(15,25,41,0.98) 100%);
-    border: 1px solid #1d304c;
-    border-radius: 10px;
+    background: #141b3d;
+    border: 1px solid #2d3a5f;
+    border-radius: 12px;
     padding: 0.9rem 1.1rem 0.85rem;
     box-shadow: 0 8px 22px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.025);
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -422,24 +440,24 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
     box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .kpi-lbl {
-    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.11em;
-    color: #3d5270; font-weight: 700; margin-bottom: 0.4rem;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.11em;
+    color: #64748b; font-weight: 700; margin-bottom: 0.4rem;
 }
 .kpi-val {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.35rem; font-weight: 600; color: #e2e8f0;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem; font-weight: 700; color: #ffffff;
     letter-spacing: -0.025em; line-height: 1.1;
 }
 .kpi-sub {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Space Mono', monospace;
     font-size: 0.71rem; margin-top: 0.2rem;
 }
 
 /* ── Index ticker bar ──────────────────────────────────────── */
 .idx-bar {
-    background: linear-gradient(180deg, rgba(20,30,48,0.98) 0%, rgba(15,25,41,0.98) 100%);
-    border: 1px solid #1d304c;
-    border-radius: 10px;
+    background: #141b3d;
+    border: 1px solid #2d3a5f;
+    border-radius: 12px;
     padding: 0.9rem 1.1rem;
     display: flex; flex-direction: column; gap: 0.2rem;
     box-shadow: 0 1px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.025);
@@ -453,66 +471,69 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
 .idx-bar.idx-up { border-bottom: 2px solid #166534; }
 .idx-bar.idx-dn { border-bottom: 2px solid #7f1d1d; }
 .idx-name {
-    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.11em;
-    color: #3d5270; font-weight: 700;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.11em;
+    color: #64748b; font-weight: 700;
 }
 .idx-val {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.4rem; font-weight: 600; color: #e2e8f0;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.65rem; font-weight: 700; color: #ffffff;
     letter-spacing: -0.03em; line-height: 1.15;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .idx-chg {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.77rem; font-weight: 500;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.77rem; font-weight: 600;
 }
 
 /* ── Table wrapper ─────────────────────────────────────────── */
 .tbl-wrap {
-    background: linear-gradient(180deg, rgba(9,17,32,0.98) 0%, rgba(10,16,32,0.98) 100%);
-    border: 1px solid #16263d;
-    border-radius: 10px; overflow: hidden;
+    background: #141b3d;
+    border: 1px solid #2d3a5f;
+    border-radius: 12px; overflow: hidden;
     margin-bottom: 1rem;
     box-shadow: 0 12px 30px rgba(0,0,0,0.20);
 }
 .tbl-cap {
     padding: 0.62rem 0.95rem; border-bottom: 1px solid #162338;
     font-size: 0.61rem; text-transform: uppercase; letter-spacing: 0.1em;
-    color: #5b7593; font-weight: 700;
-    background: linear-gradient(180deg, #091120 0%, #07101e 100%);
+    color: #a0aec0; font-weight: 700;
+    background: #1a2347;
     display: flex; justify-content: space-between; align-items: center;
 }
 table.trm {
     width: 100%; border-collapse: collapse;
-    font-size: 0.75rem; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.84rem; font-family: 'Space Mono', monospace;
 }
 table.trm th {
-    font-size: 0.59rem; text-transform: uppercase; letter-spacing: 0.09em;
-    color: #6380a1; font-weight: 700; padding: 0.56rem 0.85rem;
-    border-bottom: 1px solid #162338; white-space: nowrap;
-    text-align: right; background: #091120;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em;
+    color: #a0aec0; font-weight: 700; padding: 0.75rem 0.95rem;
+    border-bottom: 2px solid #2d3a5f; white-space: nowrap;
+    text-align: right; background: #1a2347;
+    font-family: 'Syne', sans-serif;
     position: sticky; top: 0; z-index: 1;
 }
 table.trm th.left { text-align: left; }
 table.trm td {
-    padding: 0.46rem 0.85rem; border-bottom: 1px solid #0f1929;
-    color: #8ba0bc; white-space: nowrap; text-align: right;
+    padding: 0.9rem 0.95rem; border-bottom: 1px solid #2d3a5f;
+    color: #ffffff; white-space: nowrap; text-align: right;
     transition: background 0.08s, color 0.08s;
 }
 table.trm td.left {
-    text-align: left; font-family: 'IBM Plex Sans', sans-serif; color: #b8c7da;
+    text-align: left; font-family: 'Space Mono', monospace; color: #ffffff;
 }
 table.trm td.ticker {
-    color: #7cc4ff; font-weight: 500; text-align: left;
-    letter-spacing: 0.01em;
+    color: #00d4ff; font-weight: 700; text-align: left;
+    letter-spacing: 0.02em;
+    font-family: 'Syne', sans-serif;
+    text-transform: uppercase;
+    font-size: 1rem;
 }
 table.trm td.name {
-    color: #c5d4e6; text-align: left; font-size: 0.72rem;
-    font-family: 'IBM Plex Sans', sans-serif;
+    color: #a0aec0; text-align: left; font-size: 0.88rem;
+    font-family: 'Space Mono', monospace;
     max-width: 180px; overflow: hidden; text-overflow: ellipsis;
 }
-table.trm tr:hover td { background: rgba(15,25,41,0.84) !important; color: #e2e8f0 !important; }
-table.trm tr:hover td.ticker { color: #93c5fd; }
+table.trm tr:hover td { background: #1a2347 !important; color: #ffffff !important; }
+table.trm tr:hover td.ticker { color: #00d4ff; }
 table.trm tr:last-child td { border-bottom: none; }
 
 /* ── Colour helpers ────────────────────────────────────────── */
@@ -527,8 +548,8 @@ table.trm tr:last-child td { border-bottom: none; }
 /* ── Classification badges ─────────────────────────────────── */
 .badge {
     display: inline-flex; align-items: center;
-    padding: 0.18rem 0.55rem; border-radius: 4px;
-    font-size: 0.6rem; font-weight: 700;
+    padding: 0.25rem 0.75rem; border-radius: 12px;
+    font-size: 0.75rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.06em;
     white-space: nowrap;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
@@ -539,8 +560,8 @@ table.trm tr:last-child td { border-bottom: none; }
 .bdg-mbe { background: #2e1065; color: #c084fc; border: 1px solid #6b21a8; }
 .bdg-vt  { background: #1c1917; color: #78716c; border: 1px solid #44403c; }
 .bdg-av  { background: #450a0a; color: #f87171; border: 1px solid #991b1b; }
-.bdg-pos { background: #052e16; color: #4ade80; border: 1px solid #166534; }
-.bdg-neg { background: #450a0a; color: #f87171; border: 1px solid #991b1b; }
+.bdg-pos { background: rgba(0,255,136,0.15); color: #00ff88; border: 1px solid #00ff88; }
+.bdg-neg { background: rgba(255,51,102,0.15); color: #ff3366; border: 1px solid #ff3366; }
 .bdg-neu { background: #1c1917; color: #78716c; border: 1px solid #44403c; }
 
 /* ── Idea card ─────────────────────────────────────────────── */
@@ -565,7 +586,7 @@ table.trm tr:last-child td { border-bottom: none; }
 .idea-title { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.3rem; }
 .idea-meta {
     font-size: 0.69rem; color: #3d5270;
-    margin-bottom: 0.5rem; font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 0.5rem; font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.02em;
 }
 .idea-body { font-size: 0.79rem; color: #64748b; line-height: 1.65; }
@@ -573,7 +594,7 @@ table.trm tr:last-child td { border-bottom: none; }
 .idea-tag {
     background: rgba(17,24,39,0.8); border: 1px solid #1e2d45;
     padding: 0.18rem 0.5rem; border-radius: 4px; font-size: 0.63rem;
-    color: #475569; font-family: 'IBM Plex Mono', monospace;
+    color: #475569; font-family: 'JetBrains Mono', monospace;
 }
 
 /* ── Filing row ────────────────────────────────────────────── */
@@ -590,7 +611,7 @@ table.trm tr:last-child td { border-bottom: none; }
 }
 .fil-row:last-child { border-bottom: none; }
 .fil-time {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.67rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.67rem;
     color: #3d5270; white-space: nowrap; min-width: 4.5rem; padding-top: 0.1rem;
 }
 .fil-body { flex: 1; }
@@ -599,7 +620,7 @@ table.trm tr:last-child td { border-bottom: none; }
     line-height: 1.45; margin-bottom: 0.2rem;
 }
 .fil-meta {
-    font-size: 0.67rem; color: #3d5270; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.67rem; color: #3d5270; font-family: 'JetBrains Mono', monospace;
 }
 .fil-ai {
     font-size: 0.73rem; color: #8fa6c2; margin-top: 0.42rem;
@@ -708,7 +729,8 @@ table.trm tr:last-child td { border-bottom: none; }
     padding: 0 0 1.5rem 0; margin-bottom: 0.5rem;
 }
 .term-title {
-    font-size: 1.25rem; font-weight: 600; color: #e2e8f0;
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    font-size: 1.4rem; font-weight: 700; color: #f8fbff;
     letter-spacing: -0.025em; line-height: 1.2;
 }
 .term-tagline {
@@ -746,6 +768,7 @@ table.trm tr:last-child td { border-bottom: none; }
 }
 .mod-num.primary { color: #2563eb; }
 .mod-name { font-size: 0.91rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem; letter-spacing: -0.01em; }
+.mod-name { font-family: 'Space Grotesk', 'Inter', sans-serif; }
 .mod-name.primary { color: #93c5fd; }
 .mod-desc { font-size: 0.77rem; color: #3d5270; line-height: 1.65; margin-bottom: 0.65rem; }
 .mod-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -767,7 +790,7 @@ table.trm tr:last-child td { border-bottom: none; }
     background: linear-gradient(180deg, rgba(9,17,32,0.98) 0%, rgba(7,16,30,0.98) 100%);
     border: 1px solid #14243b;
     border-radius: 10px; font-size: 0.69rem;
-    font-family: 'IBM Plex Mono', monospace; color: #2d3f5a;
+    font-family: 'JetBrains Mono', monospace; color: #2d3f5a;
     box-shadow: 0 10px 24px rgba(0,0,0,0.18);
 }
 .data-bar-item { display: flex; align-items: center; gap: 5px; }
@@ -776,24 +799,25 @@ table.trm tr:last-child td { border-bottom: none; }
 
 /* ── Utility surfaces ─────────────────────────────────────── */
 .surface {
-    background: linear-gradient(180deg, rgba(16,26,43,0.98) 0%, rgba(12,22,34,0.98) 100%);
-    border: 1px solid #1d304c;
+    background: #141b3d;
+    border: 1px solid #2d3a5f;
     border-radius: 12px;
     padding: 1rem 1.15rem;
     box-shadow: 0 12px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.025);
     margin-bottom: 0.95rem;
 }
 .surface-title {
-    font-size: 0.76rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.11em;
-    color: #6481a5;
+    color: #a0aec0;
     font-weight: 700;
     margin-bottom: 0.55rem;
 }
 .surface-note {
-    font-size: 0.79rem;
-    color: #9cb0c8;
+    font-size: 0.84rem;
+    color: #a0aec0;
     line-height: 1.65;
 }
 .mini-grid {
@@ -804,26 +828,96 @@ table.trm tr:last-child td { border-bottom: none; }
 .mini-stat {
     padding: 0.8rem 0.9rem;
     border-radius: 10px;
-    border: 1px solid #18263d;
-    background: rgba(8,14,28,0.72);
+    border: 1px solid #2d3a5f;
+    background: #1a2347;
 }
 .mini-stat-k {
-    font-size: 0.58rem;
-    color: #5f7898;
+    font-size: 0.64rem;
+    color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.10em;
     margin-bottom: 0.35rem;
 }
 .mini-stat-v {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.0rem;
-    color: #e2e8f0;
-    font-weight: 600;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.25rem;
+    color: #ffffff;
+    font-weight: 700;
 }
 .mini-stat-s {
-    font-size: 0.70rem;
-    color: #7f95b2;
+    font-size: 0.72rem;
+    color: #a0aec0;
     margin-top: 0.18rem;
+}
+.pill-nav {
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.6rem;
+    margin:0.2rem 0 1rem 0;
+}
+.pill-chip {
+    display:inline-flex;
+    align-items:center;
+    gap:0.4rem;
+    padding:0.55rem 0.85rem;
+    border-radius:999px;
+    border:2px solid #2d3a5f;
+    background:#1a2347;
+    color:#a0aec0;
+    font-size:0.70rem;
+    font-weight:600;
+    letter-spacing:0.02em;
+    box-shadow:0 8px 20px rgba(0,0,0,0.14);
+}
+.pill-chip strong {
+    color:#ffffff;
+    font-family:'Syne', sans-serif;
+    font-size:0.82rem;
+}
+.ticker-glow {
+    font-family:'Syne', sans-serif;
+    font-weight:700;
+    letter-spacing:0.03em;
+    color:#00d4ff;
+    text-transform:uppercase;
+    text-shadow:0 0 18px rgba(103,216,255,0.16);
+}
+.hero-panel {
+    background:
+      linear-gradient(135deg, rgba(20,27,61,0.98) 0%, rgba(16,22,52,0.98) 68%),
+      radial-gradient(circle at top right, rgba(0,255,136,0.08) 0%, transparent 28%);
+    border:1px solid #2d3a5f;
+    border-radius:16px;
+    padding:1.15rem 1.2rem;
+    box-shadow:0 18px 40px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.03);
+    margin-bottom:1rem;
+    position:relative;
+    overflow:hidden;
+}
+.hero-panel::before {
+    content:'';
+    position:absolute;
+    inset:0 auto auto 0;
+    width:100%;
+    height:1px;
+    background:linear-gradient(90deg, rgba(0,212,255,0), rgba(0,212,255,0.65), rgba(0,255,136,0.55), rgba(0,212,255,0));
+}
+.hero-title {
+    font-family:'Syne', sans-serif;
+    font-size:2.1rem;
+    font-weight:800;
+    background: linear-gradient(135deg, #00d4ff, #00ff88);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+    letter-spacing:-0.04em;
+    margin-bottom:0.28rem;
+}
+.hero-sub {
+    color:#a0aec0;
+    font-size:0.96rem;
+    line-height:1.65;
 }
 </style>
 """
@@ -980,9 +1074,9 @@ def page_header(
     `data_ts` is the data-as-of timestamp (distinct from page render time).
     """
     now_str = datetime.now().strftime("%d %b %Y  %H:%M") if ts else ""
-    sub_html = f'<span class="pg-subtitle">{subtitle}</span>' if subtitle else ""
+    title_safe = title
+    sub_html = f'<span class="hero-sub" style="margin:0;">{subtitle}</span>' if subtitle else ""
 
-    # Status dot: only show when caller passes real data freshness
     dot_html = ""
     if data_status:
         colour = {
@@ -992,28 +1086,47 @@ def page_header(
             "Failed":  "#ef4444",
         }.get(data_status, "#64748b")
         dot_html = (
-            f'<span style="display:inline-flex;align-items:center;gap:5px;'
-            f'font-size:0.62rem;color:{colour};font-family:\'IBM Plex Mono\',monospace;">'
-            f'<span style="width:5px;height:5px;border-radius:50%;background:{colour};'
-            f'box-shadow:0 0 5px {colour}99;"></span>Data: {data_status}</span>'
+            f'<span class="pill-chip" style="border-color:{colour}55;color:{colour};'
+            f'background:rgba(9,15,28,0.88);">'
+            f'<span style="width:7px;height:7px;border-radius:50%;background:{colour};'
+            f'box-shadow:0 0 10px {colour}aa;display:inline-block;"></span>'
+            f'Data {data_status}</span>'
         )
 
     data_ts_html = (
-        f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.62rem;'
-        f'color:#3d5270;margin-top:2px;">Data as of {data_ts}</div>'
+        f'<span class="pill-chip"><strong>Data</strong>{data_ts}</span>'
         if data_ts else ""
     )
     page_ts_html = (
-        f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.62rem;'
-        f'color:#2d3f5a;margin-top:2px;">Page rendered {now_str}</div>'
+        f'<span class="pill-chip"><strong>Rendered</strong>{now_str}</span>'
     )
 
     left, right = st.columns([1.7, 1.0])
     with left:
         st.markdown(
-            f"""<div class="pg-header">
-                  <div style="display:flex;align-items:baseline;gap:0.1rem;flex-wrap:wrap;">
-                    <span class="pg-title">{title}</span>{sub_html}
+            f"""<div class="hero-panel" style="padding:1.15rem 1.2rem 0.95rem;">
+                  <div style="display:flex;align-items:flex-end;gap:0.55rem;flex-wrap:wrap;">
+                    <span style="
+                        font-family:'Syne',sans-serif;
+                        font-size:clamp(2.1rem, 3.7vw, 3.8rem);
+                        font-weight:800;
+                        line-height:0.98;
+                        letter-spacing:-0.055em;
+                        text-transform:none;
+                        background:linear-gradient(135deg,#00d4ff 0%,#6be8ff 30%,#00ff88 100%);
+                        -webkit-background-clip:text;
+                        -webkit-text-fill-color:transparent;
+                        background-clip:text;
+                        color:transparent;
+                        display:inline-block;
+                        text-shadow:0 0 30px rgba(0,212,255,0.12);
+                    ">{title_safe}</span>
+                    {sub_html}
+                  </div>
+                  <div style="display:flex;gap:0.55rem;flex-wrap:wrap;margin-top:0.9rem;">
+                    <span class="pill-chip"><strong>Terminal</strong>India Public Markets</span>
+                    <span class="pill-chip"><strong>Mode</strong>Research</span>
+                    <span class="pill-chip"><strong>Surface</strong>{title_safe}</span>
                   </div>
                 </div>""",
             unsafe_allow_html=True,
@@ -1021,7 +1134,8 @@ def page_header(
     with right:
         right_html = "".join([x for x in [dot_html, data_ts_html, page_ts_html] if x])
         st.markdown(
-            f"""<div style="padding-top:0.15rem;text-align:right;">
+            f"""<div class="hero-panel" style="padding:1rem 1rem 0.95rem;text-align:right;min-height:100%;">
+                  <div class="hero-sub" style="margin:0 0 0.5rem 0;">Operational Status</div>
                   {right_html}
                 </div>""",
             unsafe_allow_html=True,
