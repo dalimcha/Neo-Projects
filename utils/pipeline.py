@@ -23,6 +23,8 @@ RETURNS_SNAPSHOT_CSV = DATA_DIR / "returns_snapshot.csv"
 SECTOR_PERFORMANCE_CSV = DATA_DIR / "sector_performance.csv"
 VOLUME_SHOCKS_CSV = DATA_DIR / "volume_shocks.csv"
 FUNDAMENTALS_CSV = DATA_DIR / "fundamentals.csv"
+FILINGS_CSV = DATA_DIR / "filings.csv"
+NEWS_CSV = DATA_DIR / "news.csv"
 CORPORATE_ACTIONS_CSV = DATA_DIR / "corporate_actions.csv"
 DATA_QUALITY_LOG_CSV = DATA_DIR / "data_quality_log.csv"
 FAILED_TICKERS_CSV = DATA_DIR / "failed_tickers.csv"
@@ -68,6 +70,18 @@ VOLUME_SHOCKS_COLUMNS = [
 CORPORATE_ACTIONS_COLUMNS = [
     "ticker", "company_name", "action_type", "headline", "description",
     "announcement_date", "effective_date", "source", "source_url", "ingested_at",
+]
+
+FILINGS_COLUMNS = [
+    "ticker", "company_name", "date", "time", "type", "subject",
+    "exchange", "source", "source_url", "ai_summary", "sentiment",
+    "is_material", "affected_metrics", "ingested_at",
+]
+
+NEWS_COLUMNS = [
+    "headline", "source", "date", "url", "tickers_mentioned", "sector",
+    "sentiment", "ai_summary", "is_material", "categories", "ingested_at",
+    "source_type",
 ]
 
 FAILED_TICKERS_COLUMNS = [
@@ -159,6 +173,8 @@ def ensure_data_files() -> None:
         RETURNS_SNAPSHOT_CSV: RETURNS_SNAPSHOT_COLUMNS,
         SECTOR_PERFORMANCE_CSV: SECTOR_PERFORMANCE_COLUMNS,
         VOLUME_SHOCKS_CSV: VOLUME_SHOCKS_COLUMNS,
+        FILINGS_CSV: FILINGS_COLUMNS,
+        NEWS_CSV: NEWS_COLUMNS,
         CORPORATE_ACTIONS_CSV: CORPORATE_ACTIONS_COLUMNS,
         FAILED_TICKERS_CSV: FAILED_TICKERS_COLUMNS,
         DATA_QUALITY_LOG_CSV: DATA_QUALITY_LOG_COLUMNS,
