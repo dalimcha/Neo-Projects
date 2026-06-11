@@ -40,6 +40,7 @@ PRICES_COLUMNS = [
     "ticker", "date", "open", "high", "low", "close", "adj_close",
     "prev_close", "volume", "avg_volume_30d", "volume_ratio_30d",
     "return_1d", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
+    "return_3y", "return_5y", "return_10y",
     "high_52w", "low_52w", "dist_52w_high_pct", "dist_52w_low_pct",
     "source", "price_timestamp", "updated_at",
 ]
@@ -48,6 +49,7 @@ RETURNS_SNAPSHOT_COLUMNS = [
     "ticker", "company_name", "sector", "industry", "index_membership",
     "price", "prev_close", "volume", "avg_volume_30d", "volume_ratio_30d",
     "return_1d", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
+    "return_3y", "return_5y", "return_10y",
     "high_52w", "low_52w", "dist_52w_high_pct", "dist_52w_low_pct",
     "market_cap_cr", "date", "price_source", "price_timestamp",
     "fundamentals_source", "fundamentals_as_of", "updated_at",

@@ -72,6 +72,7 @@ df = df.copy()
 
 for col in [
     "return_1d", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
+    "return_3y", "return_5y", "return_10y",
     "dist_52w_high_pct", "dist_52w_low_pct", "roe", "roce", "ebitda_margin",
     "pat_margin", "revenue_growth_1y", "pat_growth_1y", "promoter_holding",
     "fii_holding", "dii_holding",
@@ -164,7 +165,8 @@ with st.sidebar:
         "Sort By",
         [
             "market_cap_cr", "return_1d", "return_1w", "return_1m", "return_3m",
-            "return_6m", "return_1y", "volume_ratio_30d", "pe", "roe",
+            "return_6m", "return_1y", "return_3y", "return_5y", "return_10y",
+            "volume_ratio_30d", "pe", "roe",
             "revenue_growth_1y", "pat_growth_1y",
         ],
         index=6,
@@ -226,6 +228,7 @@ st.markdown(
 display_cols = [
     "ticker", "company_name", "sector", "industry", "mcap_bucket", "market_cap_cr", "price",
     "return_1d", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
+    "return_3y", "return_5y", "return_10y",
     "dist_52w_high_pct", "dist_52w_low_pct", "volume_ratio_30d",
     "pe", "ev_ebitda", "pb", "roe", "roce", "debt_equity",
     "revenue_growth_1y", "pat_growth_1y", "ebitda_margin",
@@ -248,6 +251,9 @@ table_df = table_df.rename(columns={
     "return_3m": "3M %",
     "return_6m": "6M %",
     "return_1y": "1Y %",
+    "return_3y": "3Y %",
+    "return_5y": "5Y %",
+    "return_10y": "10Y %",
     "dist_52w_high_pct": "52W High Dist %",
     "dist_52w_low_pct": "52W Low Dist %",
     "volume_ratio_30d": "Vol/30D",
@@ -294,6 +300,9 @@ else:
             "3M %": st.column_config.NumberColumn(format="%.1f%%"),
             "6M %": st.column_config.NumberColumn(format="%.1f%%"),
             "1Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "3Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "5Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "10Y %": st.column_config.NumberColumn(format="%.1f%%"),
             "52W High Dist %": st.column_config.NumberColumn(format="%.1f%%"),
             "52W Low Dist %": st.column_config.NumberColumn(format="%.1f%%"),
             "Vol/30D": st.column_config.NumberColumn(format="%.2fx"),

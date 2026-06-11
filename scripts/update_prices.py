@@ -77,7 +77,7 @@ def load_fundamentals() -> pd.DataFrame:
     return coerce_numeric(df, num_cols)
 
 
-def fetch_yfinance_history(tickers: list[str], run_id: str, period: str = "1y") -> tuple[pd.DataFrame, list[dict]]:
+def fetch_yfinance_history(tickers: list[str], run_id: str, period: str = "10y") -> tuple[pd.DataFrame, list[dict]]:
     try:
         import yfinance as yf
     except ModuleNotFoundError as exc:
@@ -187,6 +187,9 @@ def build_snapshot_from_history(history: pd.DataFrame) -> pd.DataFrame:
             "return_3m": safe_pct_change(last.get("close", pd.NA), past_close(90)),
             "return_6m": safe_pct_change(last.get("close", pd.NA), past_close(180)),
             "return_1y": safe_pct_change(last.get("close", pd.NA), past_close(365)),
+            "return_3y": safe_pct_change(last.get("close", pd.NA), past_close(365 * 3)),
+            "return_5y": safe_pct_change(last.get("close", pd.NA), past_close(365 * 5)),
+            "return_10y": safe_pct_change(last.get("close", pd.NA), past_close(365 * 10)),
             "high_52w": close_series.tail(252).max(),
             "low_52w": close_series.tail(252).min(),
             "source": "yfinance",

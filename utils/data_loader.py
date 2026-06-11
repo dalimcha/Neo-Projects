@@ -112,6 +112,7 @@ def load_returns_snapshot() -> pd.DataFrame:
     num_cols = [
         "price","prev_close","volume","avg_volume_30d","volume_ratio_30d",
         "return_1d","return_1w","return_1m","return_3m","return_6m","return_1y",
+        "return_3y","return_5y","return_10y",
         "high_52w","low_52w","dist_52w_high_pct","dist_52w_low_pct","market_cap_cr",
     ]
     for c in num_cols:
