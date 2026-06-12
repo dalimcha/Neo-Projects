@@ -32,12 +32,14 @@ from utils.formatting import (
     warn_block,
     ai_box,
     table_wrap,
+    html_block,
     fmt_price,
     fmt_pct,
     fmt_cr,
     fmt_ratio,
 )
 from utils.data_loader import (
+    build_morning_brief,
     load_universe,
     load_fundamentals,
     load_returns_snapshot,
@@ -48,7 +50,7 @@ from utils.data_loader import (
     load_data_quality_log,
     load_failed_tickers,
 )
-from utils.validation import build_universe_report, render_data_quality_panel, gate, UNIVERSE_SPECS
+from utils.validation import build_universe_report, gate, UNIVERSE_SPECS
 from utils.nse_fetcher import fetch_index_snapshot
 from utils.charting import sector_heatmap, _empty_chart
 import utils.ai_summarizer as ai
@@ -298,7 +300,7 @@ def _deterministic_market_text(indices: dict, snapshot: pd.DataFrame, sector_df:
 universe_options = list(UNIVERSE_SPECS.keys()) + ["All"]
 
 with st.sidebar:
-    st.markdown('<div class="sec-label">Universe</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Universe</div>')
     universe_label = st.selectbox("Selected Universe", universe_options, index=2)
     movers_n = st.slider("Rows", 5, 20, 10)
 
@@ -330,17 +332,12 @@ quality_report = build_universe_report(
 
 status, last_ts = _latest_quality_status(quality_log_df, dataset="prices")
 page_header(
-    "Market Command Center",
-    "Canonical market pulse and data quality gate",
+    "",
+    "",
     data_status=(status.title() if isinstance(status, str) else quality_report.fetch_status),
-    data_ts=last_ts,
+    stamp_text=f"{universe_label} · {quality_report.valid_price_rows}/{quality_report.expected_count} · Updated {last_ts or 'N/A'} IST",
+    paused_message=None if quality_report.passes else f"Universe incomplete ({quality_report.valid_price_rows}/{quality_report.expected_count}) — analytics paused",
 )
-
-with st.sidebar:
-    render_data_quality_panel(quality_report, compact=True)
-
-section_label("Data Quality")
-render_data_quality_panel(quality_report, compact=False)
 
 section_label("Index Snapshot")
 try:
@@ -368,13 +365,32 @@ else:
                 name=label,
                 value=f"{d.get('value', 0):,.2f}",
                 change=f"{d.get('change_pct', 0):+.2f}%",
-                pts=f"({d.get('change', 0):+.0f})",
+                pts=f"{float(d.get('change', 0) or 0):+,.0f}" if d.get("change") is not None else "",
                 is_up=None if key == "vix" else (float(d.get("change_pct", 0) or 0) >= 0),
                 source=source,
-                data_ts=datetime.now().strftime("%d %b %H:%M"),
+                data_ts=last_ts or "",
             )
 
-st.markdown("<br>", unsafe_allow_html=True)
+brief_lines = build_morning_brief(filtered_returns, sector_df, indices, filings_df, news_df)
+html_block(
+    f"""
+    <div class="hero-panel">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Command Center</div>
+          <div class="hero-title">Deterministic Market Brief</div>
+        </div>
+        <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+          <span class="pill-chip"><strong>Universe</strong>{quality_report.valid_price_rows}/{quality_report.expected_count}</span>
+          <span class="pill-chip"><strong>Filings</strong>{len(filings_df)}</span>
+          <span class="pill-chip"><strong>News</strong>{len(news_df)}</span>
+        </div>
+      </div>
+    </div>
+    """
+)
+st.code("\n".join(brief_lines), language=None)
+st.download_button("Copy Morning Brief", data="\n".join(brief_lines), file_name="morning_brief.txt", mime="text/plain")
 
 section_label("Market Breadth")
 if not gate(quality_report, "breadth"):

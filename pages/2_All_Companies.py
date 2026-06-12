@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from utils.formatting import inject_css, page_header, section_label, kpi_card, info_block, table_wrap
+from utils.formatting import inject_css, page_header, section_label, kpi_card, info_block, table_wrap, html_block
 from utils.data_loader import load_full_universe, load_data_quality_log
 
 
@@ -58,8 +58,8 @@ price_ts = _latest_ts(quality_log, "prices")
 fund_ts = _latest_ts(quality_log, "fundamentals")
 
 page_header(
-    "All Companies Database",
-    f"{len(df)} companies loaded | Core research grid",
+    "",
+    "",
     data_status="Fresh" if len(df) >= 475 else "Delayed",
     data_ts=price_ts,
 )
@@ -86,65 +86,27 @@ if "market_cap_cr" in df.columns:
 fund_coverage = int((df["pe"].notna() | df["roe"].notna()).sum()) if "pe" in df.columns else 0
 filing_coverage = int(df["latest_filing_date"].notna().sum()) if "latest_filing_date" in df.columns else 0
 
-st.markdown(
+html_block(
     f"""
     <div class="hero-panel">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
         <div>
-          <div class="hero-sub">Research Surface</div>
-          <div style="
-            font-family:'Syne',sans-serif;
-            font-size:clamp(1.9rem,3vw,2.8rem);
-            font-weight:800;
-            line-height:1.02;
-            letter-spacing:-0.05em;
-            background:linear-gradient(135deg,#00d4ff 0%,#00ff88 100%);
-            -webkit-background-clip:text;
-            -webkit-text-fill-color:transparent;
-            background-clip:text;
-            color:transparent;
-          ">All Companies Working Grid</div>
+          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">All Companies</div>
+          <div class="hero-title">Core Research Grid</div>
         </div>
         <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
           <span class="pill-chip"><strong>Rows</strong>{len(df)}</span>
           <span class="pill-chip"><strong>Fundamentals</strong>{fund_coverage}</span>
           <span class="pill-chip"><strong>Filings</strong>{filing_coverage}</span>
-        </div>
-      </div>
-      <div class="surface-note" style="margin-top:0.85rem;">
-        This is the main working grid for company-level analysis. It combines canonical price
-        snapshot data with whatever fundamentals and event metadata are actually available.
-        The right way to improve it is to widen coverage, not invent missing fields.
-      </div>
-      <div class="mini-grid" style="margin-top:0.85rem;">
-        <div class="mini-stat">
-          <div class="mini-stat-k">Companies</div>
-          <div class="mini-stat-v">{len(df)}</div>
-          <div class="mini-stat-s">merged research rows</div>
-        </div>
-        <div class="mini-stat">
-          <div class="mini-stat-k">Fundamentals</div>
-          <div class="mini-stat-v">{fund_coverage}</div>
-          <div class="mini-stat-s">{fund_ts or 'no refresh log'}</div>
-        </div>
-        <div class="mini-stat">
-          <div class="mini-stat-k">Event Context</div>
-          <div class="mini-stat-v">{filing_coverage}</div>
-          <div class="mini-stat-s">latest filing metadata</div>
-        </div>
-        <div class="mini-stat">
-          <div class="mini-stat-k">Price Snapshot</div>
-          <div class="mini-stat-v">{price_ts or 'N/A'}</div>
-          <div class="mini-stat-s">canonical refresh</div>
+          <span class="pill-chip"><strong>Snapshot</strong>{price_ts or 'N/A'}</span>
         </div>
       </div>
     </div>
-    """,
-    unsafe_allow_html=True,
+    """
 )
 
 with st.sidebar:
-    st.markdown('<div class="sec-label">Filters</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Filters</div>')
     sectors = ["All"] + sorted(df["sector"].dropna().astype(str).unique().tolist()) if "sector" in df.columns else ["All"]
     industries = ["All"] + sorted(df["industry"].dropna().astype(str).unique().tolist()) if "industry" in df.columns else ["All"]
     sector_f = st.selectbox("Sector", sectors)
@@ -159,6 +121,11 @@ with st.sidebar:
     ret_max = st.slider("1Y Return Max %", -100, 300, 300)
     pe_max = st.slider("Max P/E", 0, 100, 100)
     min_roe = st.slider("Min ROE %", -20, 40, -20)
+
+    st.markdown("---")
+    quartile_period_a = st.selectbox("Quartile Period A", ["Off", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y"], index=0)
+    quartile_period_b = st.selectbox("Quartile Period B", ["Off", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y"], index=0)
+    quartile_show = st.multiselect("Show Quartiles", ["Q1", "Q2", "Q3", "Q4"], default=["Q1", "Q2", "Q3", "Q4"])
 
     st.markdown("---")
     sort_col = st.selectbox(
@@ -190,10 +157,26 @@ if "pe" in fdf.columns:
     fdf = fdf[(fdf["pe"].isna()) | (fdf["pe"] <= pe_max)]
 if "roe" in fdf.columns:
     fdf = fdf[(fdf["roe"].isna()) | (fdf["roe"] >= min_roe)]
+period_to_col = {
+    "1M": "quartile_1m",
+    "3M": "quartile_3m",
+    "6M": "quartile_6m",
+    "1Y": "quartile_1y",
+    "3Y": "quartile_3y",
+    "5Y": "quartile_5y",
+    "10Y": "quartile_10y",
+}
+if quartile_period_a != "Off":
+    qa_col = period_to_col[quartile_period_a]
+    if qa_col in fdf.columns:
+        fdf = fdf[fdf[qa_col].isin(quartile_show)]
+if quartile_period_b != "Off":
+    qb_col = period_to_col[quartile_period_b]
+    if qb_col in fdf.columns:
+        fdf = fdf[fdf[qb_col].isin(quartile_show)]
 if sort_col in fdf.columns:
     fdf = fdf.sort_values(sort_col, ascending=sort_asc, na_position="last")
 
-section_label("Coverage")
 cov_cols = st.columns(5)
 with cov_cols[0]:
     kpi_card("Displayed", str(len(fdf)), "after filters")
@@ -212,28 +195,40 @@ if fund_coverage < 100:
         "This is why valuation, growth, and holding columns still look sparse. Import the Screener export to unlock the full research grid."
     )
 
+if quartile_period_a != "Off" and quartile_period_b != "Off":
+    section_label("Quartile Crosstab")
+    qa_col = period_to_col[quartile_period_a]
+    qb_col = period_to_col[quartile_period_b]
+    if qa_col in df.columns and qb_col in df.columns:
+        ctab = (
+            df.dropna(subset=[qa_col, qb_col])
+            .groupby([qa_col, qb_col]).size()
+            .unstack(fill_value=0)
+            .reindex(index=["Q1", "Q2", "Q3", "Q4"], columns=["Q1", "Q2", "Q3", "Q4"], fill_value=0)
+        )
+        st.dataframe(ctab, width="stretch")
+        reversion = df[(df.get(qa_col) == "Q4") & (df.get(qb_col) == "Q1")].head(5)
+        compound = df[(df.get(qa_col) == "Q1") & (df.get(qb_col) == "Q1")].head(5)
+        c1, c2 = st.columns(2)
+        with c1:
+            info_block("Reversion candidates: " + (", ".join(reversion["ticker"].astype(str).tolist()) if not reversion.empty else "None"))
+        with c2:
+            info_block("Durable compounders: " + (", ".join(compound["ticker"].astype(str).tolist()) if not compound.empty else "None"))
+
 section_label("Table")
 
-st.markdown(
-    """
-    <div style="display:flex;gap:0.55rem;flex-wrap:wrap;margin:0 0 0.7rem 0;">
-      <span class="pill-chip"><strong>View</strong>Research Grid</span>
-      <span class="pill-chip"><strong>Density</strong>High</span>
-      <span class="pill-chip"><strong>Mode</strong>Price + Fundamentals + Filings</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+info_block("Price, fundamentals, filings, and long-duration return quartiles are merged into one research grid.")
 
 display_cols = [
     "ticker", "company_name", "sector", "industry", "mcap_bucket", "market_cap_cr", "price",
     "return_1d", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
     "return_3y", "return_5y", "return_10y",
+    "quartile_1m", "quartile_3m", "quartile_6m", "quartile_1y", "quartile_3y", "quartile_5y", "quartile_10y",
     "dist_52w_high_pct", "dist_52w_low_pct", "volume_ratio_30d",
     "pe", "ev_ebitda", "pb", "roe", "roce", "debt_equity",
     "revenue_growth_1y", "pat_growth_1y", "ebitda_margin",
     "promoter_holding", "fii_holding", "dii_holding",
-    "latest_result_date", "latest_filing_date", "latest_filing_type",
+    "latest_result_date", "latest_filing_date", "latest_filing_type", "latest_news_headline",
 ]
 display_cols = [c for c in display_cols if c in fdf.columns]
 table_df = fdf[display_cols].copy()
@@ -254,6 +249,13 @@ table_df = table_df.rename(columns={
     "return_3y": "3Y %",
     "return_5y": "5Y %",
     "return_10y": "10Y %",
+    "quartile_1m": "Q 1M",
+    "quartile_3m": "Q 3M",
+    "quartile_6m": "Q 6M",
+    "quartile_1y": "Q 1Y",
+    "quartile_3y": "Q 3Y",
+    "quartile_5y": "Q 5Y",
+    "quartile_10y": "Q 10Y",
     "dist_52w_high_pct": "52W High Dist %",
     "dist_52w_low_pct": "52W Low Dist %",
     "volume_ratio_30d": "Vol/30D",
@@ -272,15 +274,15 @@ table_df = table_df.rename(columns={
     "latest_result_date": "Latest Result",
     "latest_filing_date": "Latest Filing",
     "latest_filing_type": "Filing Type",
+    "latest_news_headline": "Latest News",
 })
 
-st.markdown(
+html_block(
     f"""<div style="font-size:0.72rem;color:#64748b;margin-bottom:0.6rem;">
     Showing <span style="color:#e2e8f0;font-weight:600;">{len(table_df)}</span> companies
     &nbsp;|&nbsp; Sorted by <span style="color:#60a5fa;">{sort_col}</span>
     &nbsp;|&nbsp; Fundamentals coverage <span style="color:#e2e8f0;font-weight:600;">{fund_coverage}/{len(df)}</span>
     </div>""",
-    unsafe_allow_html=True,
 )
 
 if table_df.empty:

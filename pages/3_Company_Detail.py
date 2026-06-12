@@ -21,7 +21,7 @@ from utils.formatting import (
 from utils.data_loader import (
     load_universe, load_order_book, load_fundamentals,
     load_filings, load_news, load_notes, save_note, get_company_detail,
-    get_company_quarterly, pivot_quarterly_metric,
+    get_company_quarterly, pivot_quarterly_metric, load_full_universe,
     compute_quarterly_yoy, quarterly_summary_stats, QUARTER_ORDER,
 )
 from utils.charting import (
@@ -446,6 +446,48 @@ with tabs[2]:
                         unsafe_allow_html=True,
                     )
 
+        st.markdown("<br>", unsafe_allow_html=True)
+        section_label("Vs Peers — Same Quarter")
+        full_uni = load_full_universe()
+        if full_uni.empty or "sector" not in full_uni.columns or not sector:
+            info_block("Peer quarter comparison unavailable because sector peers could not be resolved.")
+        else:
+            peers = full_uni[full_uni["sector"] == sector].copy()
+            if "market_cap_cr" in peers.columns:
+                peers = peers.sort_values("market_cap_cr", ascending=False)
+            peer_tickers = [t for t in peers["ticker"].astype(str).tolist() if t != ticker][:5]
+            latest_q = str(latest.get("quarter", ""))
+            latest_fy = str(latest.get("fiscal_year", ""))
+            rows = []
+            for pt in [ticker] + peer_tickers:
+                pq = get_company_quarterly(pt)
+                if pq.empty:
+                    continue
+                hit = pq[(pq["quarter"] == latest_q) & (pq["fiscal_year"] == latest_fy)]
+                if hit.empty:
+                    continue
+                r = hit.iloc[-1]
+                rows.append({
+                    "Ticker": pt,
+                    "Revenue (Cr)": r.get("revenue_cr"),
+                    "EBITDA Margin %": r.get("ebitda_margin_pct"),
+                    "PAT YoY %": r.get("pat_yoy_pct"),
+                })
+            peer_df = pd.DataFrame(rows)
+            if peer_df.empty:
+                info_block(f"No peer data found for {latest_q} {latest_fy}.")
+            else:
+                st.dataframe(
+                    peer_df,
+                    hide_index=True,
+                    width="stretch",
+                    column_config={
+                        "Revenue (Cr)": st.column_config.NumberColumn(format="₹ %.0f"),
+                        "EBITDA Margin %": st.column_config.NumberColumn(format="%.1f%%"),
+                        "PAT YoY %": st.column_config.NumberColumn(format="%.1f%%"),
+                    },
+                )
+
 # ── TAB 4: Valuation ──────────────────────────────────────────────────────────
 with tabs[3]:
     col1, col2 = st.columns(2)
@@ -496,8 +538,8 @@ with tabs[3]:
 with tabs[4]:
     if ob.empty:
         warn_block(
-            f"{ticker} is not in the Order Book database. "
-            "Add it via the Order Book Screener page."
+            f"{ticker} is not in the optional order-book dataset. "
+            "Add it via the Special Situations page."
         )
     else:
         from utils.scoring import FACTOR_LABELS, FACTOR_MAX, calculate_ob_score

@@ -251,107 +251,26 @@ _STATUS_COLOR = {
 
 def render_data_quality_panel(rep: UniverseReport, compact: bool = False) -> None:
     """
-    Render the Data Quality Panel.
-    `compact=True` is the sidebar form; False is the full Command Center banner.
+    Legacy helper kept only for hidden diagnostics.
+    The product surface should expose a single discreet timestamp plus a one-line
+    paused banner when the universe is incomplete.
     """
-    fg, bg = _STATUS_COLOR.get(rep.fetch_status, ("#dc2626", "#450a0a"))
-
     def _fmt_ts(ts: Optional[datetime], fmt: str) -> str:
         if ts is None:
             return "—"
         return escape(ts.strftime(fmt))
 
-    if compact:
-        rows = "".join(
-            [
-                f"<div style='display:flex;justify-content:space-between;gap:0.75rem;"
-                f"font-size:0.68rem;color:#7f93b1;margin-top:0.22rem;'>"
-                f"<span>{escape(k)}</span>"
-                f"<span style=\"color:#d7e3f4;font-family:'JetBrains Mono',monospace;text-align:right;\">{escape(v)}</span>"
-                f"</div>"
-                for k, v in [
-                    ("Universe", rep.universe),
-                    ("Loaded", f"{rep.actual_loaded}/{rep.expected_count}"),
-                    ("Valid prices", str(rep.valid_price_rows)),
-                    ("Valid 1D ret", str(rep.valid_1d_return_rows)),
-                    ("Completeness", f"{rep.completeness_pct:.0f}%"),
-                    ("Price source", rep.data_source_prices),
-                    ("Last fetch", _fmt_ts(rep.last_price_fetch, "%d %b %H:%M")),
-                ]
-            ]
-        )
-        st.markdown(
-            f"""<div class="surface" style="margin-top:0.45rem;border-color:{fg}55;background:
-            linear-gradient(180deg, rgba(11,18,33,0.95), rgba(9,14,28,0.98));">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;">
-                <span style="font-size:0.64rem;font-weight:800;letter-spacing:0.14em;
-                text-transform:uppercase;color:{fg};">Data Quality</span>
-                <span class="pill-chip" style="border-color:{fg}55;color:{fg};background:{bg};">
-                  {escape(rep.fetch_status.upper())}
-                </span>
-              </div>
-              <div style="margin-top:0.45rem;">{rows}</div>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-        return
-
-    fail_html = ""
+    stamp = (
+        f"{rep.universe} · {rep.valid_price_rows}/{rep.expected_count} · "
+        f"Updated {_fmt_ts(rep.last_price_fetch, '%d %b %H:%M')} IST"
+    )
+    fg, _ = _STATUS_COLOR.get(rep.fetch_status, ("#dc2626", "#450a0a"))
+    st.caption(stamp)
     if not rep.passes:
-        items = "".join(
-            f"<li style='margin-bottom:0.28rem;'>{escape(r)}</li>" for r in rep.failure_reasons
+        st.warning(
+            f"Universe incomplete ({rep.valid_price_rows}/{rep.expected_count}) — analytics paused",
+            icon="",
         )
-        fail_html = (
-            f'<ul style="margin:0.6rem 0 0 1.1rem;color:#fca5a5;font-size:0.78rem;'
-            f'line-height:1.5;">{items}</ul>'
-            '<div style="margin-top:0.5rem;font-size:0.74rem;color:#fbbf24;">'
-            'Analytics disabled until data quality passes.</div>'
-        )
-
-    timestamps = "".join(
-        [
-            f"<div class='mini-stat' style='min-height:unset;padding:0.9rem 0.95rem;'>"
-            f"<div class='mini-stat-k'>{escape(k)}</div>"
-            f"<div class='mini-stat-v' style='font-size:1rem;'>{escape(v)}</div>"
-            f"</div>"
-            for k, v in [
-                ("Universe", f"{rep.universe} ({rep.actual_loaded}/{rep.expected_count})"),
-                ("Completeness", f"{rep.completeness_pct:.1f}%"),
-                ("Price source", rep.data_source_prices),
-                ("Last price", _fmt_ts(rep.last_price_fetch, "%d %b %Y %H:%M")),
-                ("Last fundamentals", _fmt_ts(rep.last_fundamentals_fetch, "%d %b %Y")),
-                ("Last news", _fmt_ts(rep.last_news_fetch, "%d %b %H:%M")),
-            ]
-        ]
-    )
-
-    st.markdown(
-        f"""<div class="hero-panel" style="padding:1.05rem 1.15rem 1rem;margin-bottom:1.1rem;
-        border-color:{fg}55;background:
-        linear-gradient(135deg, rgba(10,18,33,0.96), rgba(12,20,38,0.98) 45%, {bg});">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
-            <div>
-              <div class="hero-sub" style="color:{fg};">Data Quality</div>
-              <div class="hero-title" style="font-size:1.45rem;margin-top:0.1rem;color:#f8fbff;">
-                {escape(rep.fetch_status.upper())}
-              </div>
-            </div>
-            <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
-              <span class="pill-chip" style="border-color:{fg}44;color:{fg};background:{bg};">
-                {escape(rep.universe)}
-              </span>
-              <span class="pill-chip">
-                {escape(f'{len(rep.failed_tickers)} failed tickers')}
-              </span>
-            </div>
-          </div>
-          <div class="mini-grid" style="margin-top:0.9rem;grid-template-columns:repeat(6,minmax(0,1fr));">
-            {timestamps}
-          </div>
-          {fail_html}
-        </div>""",
-        unsafe_allow_html=True,
-    )
 
 
 # ── Logging ──────────────────────────────────────────────────────────────────

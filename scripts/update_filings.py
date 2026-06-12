@@ -50,9 +50,32 @@ FILINGS_COLUMNS = [
     "ai_summary",
     "sentiment",
     "is_material",
+    "materiality_score",
     "affected_metrics",
     "ingested_at",
 ]
+
+MATERIALITY_BY_TYPE = {
+    "Results": 90,
+    "Order Win": 80,
+    "Credit Rating": 70,
+    "Investor Presentation": 65,
+    "Annual Report": 60,
+    "Fundraise": 60,
+    "Management Change": 55,
+    "Board Meeting": 40,
+    "General": 25,
+}
+
+
+def _materiality_score(event_type: str, sentiment: str) -> int:
+    score = MATERIALITY_BY_TYPE.get(str(event_type or "").strip(), 35)
+    sentiment = str(sentiment or "").strip().lower()
+    if sentiment == "positive":
+        score += 5
+    elif sentiment == "negative":
+        score += 8
+    return max(0, min(100, score))
 
 
 def _normalize_filings(df: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
@@ -79,6 +102,9 @@ def _normalize_filings(df: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame
     out["ai_summary"] = out.get("ai_summary", "")
     out["sentiment"] = out.get("sentiment", "")
     out["is_material"] = out.get("is_material", False)
+    out["materiality_score"] = [
+        _materiality_score(t, s) for t, s in zip(out["type"], out["sentiment"])
+    ]
     out["affected_metrics"] = out.get("affected_metrics", "")
     out["ingested_at"] = now_ist_iso()
     for col in FILINGS_COLUMNS:

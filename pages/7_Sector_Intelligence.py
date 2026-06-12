@@ -17,7 +17,7 @@ from utils.formatting import (
     fmt_cr, fmt_ratio, info_block, ai_box, table_wrap, badge_html,
     ACCENT, POS, NEG, TEXT3, BG2,
 )
-from utils.data_loader import load_sectors, load_full_universe, load_order_book, load_news
+from utils.data_loader import load_sectors, load_full_universe, load_order_book, load_news, load_quarterly
 from utils.scoring import score_order_book_df
 from utils.charting import sector_heatmap, peer_comparison_bar
 
@@ -290,7 +290,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tabs = st.tabs([
     "Overview", "Key Companies", "Valuation Comparison",
-    "Order Book Opportunities", "Recent News",
+    "QoQ Rollup", "Order Book Opportunities", "Recent News",
 ])
 
 # ── TAB 1: Overview ───────────────────────────────────────────────────────────
@@ -430,8 +430,61 @@ with tabs[2]:
     else:
         info_block("Fundamental data not available for this sector.")
 
-# ── TAB 4: Order Book Opportunities ──────────────────────────────────────────
+# ── TAB 4: QoQ Rollup ────────────────────────────────────────────────────────
 with tabs[3]:
+    section_label("Sector Quarter-on-Quarter Rollup")
+    qdf = load_quarterly()
+    if qdf.empty or sec_companies.empty:
+        info_block("Quarterly sector rollup unavailable.")
+    else:
+        tickers = set(sec_companies["ticker"].astype(str))
+        sq = qdf[qdf["ticker"].astype(str).isin(tickers)].copy()
+        if sq.empty:
+            info_block("No quarterly rows found for this sector.")
+        else:
+            roll = (
+                sq.groupby(["fiscal_year", "quarter"], as_index=False)
+                .agg(
+                    revenue_cr=("revenue_cr", "sum"),
+                    ebitda_cr=("ebitda_cr", "sum"),
+                    pat_cr=("pat_cr", "sum"),
+                    median_ebitda_margin_pct=("ebitda_margin_pct", "median"),
+                    mean_yoy_pct=("revenue_yoy_pct", "mean"),
+                    companies=("ticker", "nunique"),
+                )
+                .sort_values(["fiscal_year", "quarter"])
+            )
+            roll["cycle_position"] = pd.cut(
+                pd.to_numeric(roll["mean_yoy_pct"], errors="coerce"),
+                bins=[-999, -5, 0, 8, 15, 999],
+                labels=["Bottoming", "Recovery", "Early upcycle", "Mid upcycle", "Peaking"],
+            ).astype(str)
+            st.dataframe(
+                roll.rename(columns={
+                    "fiscal_year": "FY",
+                    "quarter": "Qtr",
+                    "revenue_cr": "Revenue (Cr)",
+                    "ebitda_cr": "EBITDA (Cr)",
+                    "pat_cr": "PAT (Cr)",
+                    "median_ebitda_margin_pct": "Median EBITDA Margin %",
+                    "mean_yoy_pct": "Mean YoY Revenue %",
+                    "companies": "Companies",
+                    "cycle_position": "Cycle Position",
+                }),
+                hide_index=True,
+                width="stretch",
+                height=340,
+                column_config={
+                    "Revenue (Cr)": st.column_config.NumberColumn(format="₹ %.0f"),
+                    "EBITDA (Cr)": st.column_config.NumberColumn(format="₹ %.0f"),
+                    "PAT (Cr)": st.column_config.NumberColumn(format="₹ %.0f"),
+                    "Median EBITDA Margin %": st.column_config.NumberColumn(format="%.1f%%"),
+                    "Mean YoY Revenue %": st.column_config.NumberColumn(format="%.1f%%"),
+                },
+            )
+
+# ── TAB 5: Order Book Opportunities ──────────────────────────────────────────
+with tabs[4]:
     section_label("Order Book Opportunities")
     if ob_df.empty:
         info_block("Order book database empty.")
@@ -468,8 +521,8 @@ with tabs[3]:
                   </table>""",
             )
 
-# ── TAB 5: Recent News ────────────────────────────────────────────────────────
-with tabs[4]:
+# ── TAB 6: Recent News ────────────────────────────────────────────────────────
+with tabs[5]:
     section_label("Recent News")
     if not news_df.empty and "sector" in news_df.columns:
         sec_news = news_df[news_df["sector"].astype(str).str.contains(sector.split()[0], case=False, na=False)]

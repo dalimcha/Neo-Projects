@@ -1,0 +1,501 @@
+ticker,sector,sub_sector
+360ONE,Financial Services,Stockbroking & Allied
+3MINDIA,Industrial Manufacturing,Diversified
+AADHARHFC,NBFCs,Housing Finance Company
+AARTIIND,Chemicals,Specialty Chemicals
+AAVAS,NBFCs,Housing Finance Company
+ABB,Capital Goods,Heavy Electrical Equipment
+ABBOTINDIA,Pharma,Pharmaceuticals
+ABCAPITAL,NBFCs,Investment Company
+ABDL,Industrial Manufacturing,Breweries & Distilleries
+ABFRL,Consumer,Apparel Retail
+ABLBL,Consumer,Speciality Retail
+ABREL,Real Estate,"Residential, Commercial Projects"
+ABSLAMC,Financial Services,Asset Management Company
+ACC,Cement,Cement & Cement Products
+ACE,Industrial Manufacturing,Construction Vehicles
+ACMESOLAR,Power & Utilities,Power Generation
+ACUTAAS,Pharma,Pharmaceuticals
+ADANIENSOL,Power & Utilities,Power Distribution
+ADANIENT,Industrial Manufacturing,Trading - Minerals
+ADANIGREEN,Power & Utilities,Power Generation
+ADANIPORTS,Industrial Manufacturing,Port & Port services
+ADANIPOWER,Power & Utilities,Integrated Power Utilities
+AEGISLOG,Oil & Gas,Trading - Gas
+AEGISVOPAK,Industrial Manufacturing,Oil Storage & Transportation
+AFCONS,Infra EPC,Civil Construction
+AFFLE,IT Services,IT Enabled Services
+AIAENG,Industrial Manufacturing,Castings & Forgings
+AIIL,NBFCs,Non Banking Financial Company (NBFC)
+AJANTPHARM,Pharma,Pharmaceuticals
+ALKEM,Pharma,Pharmaceuticals
+AMBER,Consumer,Household Appliances
+AMBUJACEM,Cement,Cement & Cement Products
+ANANDRATHI,Financial Services,Financial Products Distributor
+ANANTRAJ,Real Estate,"Residential, Commercial Projects"
+ANGELONE,Financial Services,Stockbroking & Allied
+ANTHEM,Pharma,Biotechnology
+ANURAS,Chemicals,Specialty Chemicals
+APARINDS,Capital Goods,Cables & Conductors
+APLAPOLLO,Industrial Manufacturing,Iron & Steel Products
+APOLLOHOSP,Hospitals,Hospital
+APOLLOTYRE,Autos,Tyres & Rubber Products
+APTUS,NBFCs,Housing Finance Company
+ARE&M,Autos,Auto Components & Equipments
+ASAHIINDIA,Autos,Auto Components & Equipments
+ASHOKLEY,Industrial Manufacturing,Commercial Vehicles
+ASIANPAINT,Consumer,Paints
+ASTERDM,Hospitals,Hospital
+ASTRAL,Industrial Manufacturing,Plastic Products - Industrial
+ATGL,Oil & Gas,LPG/CNG/PNG/LNG Supplier
+ATHERENERG,Autos,2/3 Wheelers
+ATUL,Chemicals,Specialty Chemicals
+AUBANK,Banks,Other Bank
+AUROPHARMA,Pharma,Pharmaceuticals
+AWL,Consumer,Edible Oil
+AXISBANK,Banks,Private Sector Bank
+BAJAJ-AUTO,Autos,2/3 Wheelers
+BAJAJFINSV,NBFCs,Holding Company
+BAJAJHFL,NBFCs,Housing Finance Company
+BAJAJHLDNG,NBFCs,Holding Company
+BAJFINANCE,NBFCs,Non Banking Financial Company (NBFC)
+BALKRISIND,Autos,Tyres & Rubber Products
+BALRAMCHIN,Consumer,Sugar
+BANDHANBNK,Banks,Private Sector Bank
+BANKBARODA,Banks,Public Sector Bank
+BANKINDIA,Banks,Public Sector Bank
+BATAINDIA,Consumer,Footwear
+BAYERCROP,Chemicals,Pesticides & Agrochemicals
+BBTC,Consumer,Packaged Foods
+BDL,Defence,Missiles & Ammunition
+BEL,Defence,Defence Electronics
+BELRISE,Autos,Auto Components & Equipments
+BEML,Capital Goods,Heavy Equipment
+BERGEPAINT,Consumer,Paints
+BHARATFORG,Autos,Auto Components & Equipments
+BHARTIARTL,Telecom,Telecom - Cellular & Fixed line services
+BHARTIHEXA,Telecom,Telecom - Cellular & Fixed line services
+BHEL,Capital Goods,Heavy Electrical Equipment
+BIKAJI,Consumer,Packaged Foods
+BIOCON,Pharma,Pharmaceuticals
+BLS,Hotels,"Tour, Travel Related Services"
+BLUEDART,Logistics,Logistics Solution Provider
+BLUEJET,Pharma,Pharmaceuticals
+BLUESTARCO,Consumer,Household Appliances
+BOSCHLTD,Autos,Auto Components & Equipments
+BPCL,Oil & Gas,Refineries & Marketing
+BRIGADE,Real Estate,"Residential, Commercial Projects"
+BRITANNIA,Consumer,Packaged Foods
+BSE,Financial Services,Exchange and Data Platform
+BSOFT,IT Services,Computers - Software & Consulting
+CAMS,Financial Services,"Depositories, Clearing Houses and Other Intermediaries"
+CANBK,Banks,Public Sector Bank
+CANFINHOME,NBFCs,Housing Finance Company
+CANHLIFE,Financial Services,Life Insurance
+CAPLIPOINT,Pharma,Pharmaceuticals
+CARBORUNIV,Industrial Manufacturing,Abrasives & Bearings
+CARTRADE,Consumer,E-Retail/ E-Commerce
+CASTROLIND,Oil & Gas,Lubricants
+CCL,Consumer,Tea & Coffee
+CDSL,Financial Services,"Depositories, Clearing Houses and Other Intermediaries"
+CEATLTD,Autos,Tyres & Rubber Products
+CEMPRO,Infra EPC,Civil Construction
+CENTRALBK,Banks,Public Sector Bank
+CESC,Power & Utilities,Integrated Power Utilities
+CGCL,NBFCs,Non Banking Financial Company (NBFC)
+CGPOWER,Capital Goods,Electrical Equipment
+CHALET,Hotels,Hotels & Resorts
+CHAMBLFERT,Chemicals,Fertilizers
+CHENNPETRO,Oil & Gas,Refineries & Marketing
+CHOICEIN,NBFCs,Holding Company
+CHOLAFIN,NBFCs,Non Banking Financial Company (NBFC)
+CHOLAHLDNG,NBFCs,Investment Company
+CIEINDIA,Autos,Auto Components & Equipments
+CIPLA,Pharma,Pharmaceuticals
+CLEAN,Chemicals,Specialty Chemicals
+COALINDIA,Oil & Gas,Coal
+COCHINSHIP,Defence,Shipbuilding
+COFORGE,IT Services,Computers - Software & Consulting
+COHANCE,Pharma,Pharmaceuticals
+COLPAL,Industrial Manufacturing,Personal Care
+CONCOR,Logistics,Logistics Solution Provider
+CONCORDBIO,Pharma,Pharmaceuticals
+COROMANDEL,Chemicals,Fertilizers
+CPPLUS,Electronics,EMS
+CRAFTSMAN,Autos,Auto Components & Equipments
+CREDITACC,NBFCs,Microfinance Institutions
+CRISIL,NBFCs,Other Financial Services
+CROMPTON,Consumer,Household Appliances
+CUB,Banks,Private Sector Bank
+CUMMINSIND,Industrial Manufacturing,"Compressors, Pumps & Diesel Engines"
+CYIENT,IT Services,IT Enabled Services
+DABUR,Industrial Manufacturing,Personal Care
+DALBHARAT,Cement,Cement & Cement Products
+DATAPATTNS,Defence,Aerospace & Defense
+DCMSHRIRAM,Industrial Manufacturing,Diversified
+DEEPAKFERT,Chemicals,Commodity Chemicals
+DEEPAKNTR,Chemicals,Specialty Chemicals
+DELHIVERY,Logistics,Logistics Solution Provider
+DEVYANI,Hotels,Restaurants
+DIVISLAB,Pharma,Pharmaceuticals
+DIXON,Electronics,EMS
+DLF,Real Estate,"Residential, Commercial Projects"
+DMART,Consumer,Diversified Retail
+DOMS,Industrial Manufacturing,Stationary
+DRREDDY,Pharma,Pharmaceuticals
+ECLERX,Industrial Manufacturing,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
+EICHERMOT,Autos,2/3 Wheelers
+EIDPARRY,Consumer,Other Food Products
+EIHOTEL,Hotels,Hotels & Resorts
+ELECON,Capital Goods,Heavy Electrical Equipment
+ELGIEQUIP,Industrial Manufacturing,"Compressors, Pumps & Diesel Engines"
+EMAMILTD,Industrial Manufacturing,Personal Care
+EMCURE,Pharma,Pharmaceuticals
+EMMVEE,Capital Goods,Other Electrical Equipment
+ENDURANCE,Autos,Auto Components & Equipments
+ENGINERSIN,Infra EPC,Civil Construction
+ENRIN,Capital Goods,Heavy Electrical Equipment
+ERIS,Pharma,Pharmaceuticals
+ESCORTS,Industrial Manufacturing,Tractors
+ETERNAL,Consumer,E-Retail/ E-Commerce
+EXIDEIND,Autos,Auto Components & Equipments
+FACT,Chemicals,Fertilizers
+FEDERALBNK,Banks,Private Sector Bank
+FINCABLES,Industrial Manufacturing,Cables - Electricals
+FIRSTCRY,Consumer,E-Retail/ E-Commerce
+FIVESTAR,NBFCs,Non Banking Financial Company (NBFC)
+FLUOROCHEM,Chemicals,Specialty Chemicals
+FORCEMOT,Autos,Passenger Cars & Utility Vehicles
+FORTIS,Hospitals,Hospital
+FSL,Industrial Manufacturing,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
+GABRIEL,Autos,Auto Components & Equipments
+GAIL,Oil & Gas,Gas Transmission/Marketing
+GALLANTT,Industrial Manufacturing,Iron & Steel Products
+GESHIP,Logistics,Shipping
+GICRE,Financial Services,General Insurance
+GILLETTE,Industrial Manufacturing,Personal Care
+GLAND,Pharma,Pharmaceuticals
+GLAXO,Pharma,Pharmaceuticals
+GLENMARK,Pharma,Pharmaceuticals
+GMDCLTD,Industrial Manufacturing,Industrial Minerals
+GMRAIRPORT,Industrial Manufacturing,Airport & Airport services
+GODFRYPHLP,Industrial Manufacturing,Cigarettes & Tobacco Products
+GODIGIT,Financial Services,General Insurance
+GODREJCP,Industrial Manufacturing,Personal Care
+GODREJIND,Industrial Manufacturing,Diversified
+GODREJPROP,Real Estate,"Residential, Commercial Projects"
+GPIL,Industrial Manufacturing,Iron & Steel Products
+GRANULES,Pharma,Pharmaceuticals
+GRAPHITE,Industrial Manufacturing,Electrodes & Refractories
+GRASIM,Cement,Cement & Cement Products
+GRAVITA,Industrial Manufacturing,Industrial Minerals
+GROWW,Financial Services,Stockbroking & Allied
+GRSE,Defence,Shipbuilding
+GVT&D,Capital Goods,Heavy Electrical Equipment
+HAL,Defence,Aerospace & Defence
+HAVELLS,Consumer,Consumer Electronics
+HBLENGINE,Industrial Manufacturing,Other Industrial Products
+HCLTECH,IT Services,Computers - Software & Consulting
+HDBFS,NBFCs,Non Banking Financial Company (NBFC)
+HDFCAMC,Financial Services,Asset Management Company
+HDFCBANK,Banks,Private Sector Bank
+HDFCLIFE,Financial Services,Life Insurance
+HEG,Industrial Manufacturing,Electrodes & Refractories
+HEROMOTOCO,Autos,2/3 Wheelers
+HEXT,IT Services,Computers - Software & Consulting
+HFCL,Telecom,Telecom - Infrastructure
+HINDALCO,Metals,Aluminium
+HINDCOPPER,Metals,Copper
+HINDPETRO,Oil & Gas,Refineries & Marketing
+HINDUNILVR,Industrial Manufacturing,Diversified FMCG
+HINDZINC,Metals,Zinc
+HOMEFIRST,NBFCs,Housing Finance Company
+HONASA,Industrial Manufacturing,Personal Care
+HONAUT,Industrial Manufacturing,Industrial Products
+HSCL,Chemicals,Carbon Black
+HUDCO,NBFCs,Financial Institution
+HYUNDAI,Autos,Passenger Cars & Utility Vehicles
+ICICIAMC,Financial Services,Asset Management Company
+ICICIBANK,Banks,Private Sector Bank
+ICICIGI,Financial Services,General Insurance
+ICICIPRULI,Financial Services,Life Insurance
+IDBI,Banks,Private Sector Bank
+IDEA,Telecom,Telecom - Cellular & Fixed line services
+IDFCFIRSTB,Banks,Private Sector Bank
+IEX,Financial Services,Exchange and Data Platform
+IFCI,NBFCs,Financial Institution
+IGIL,Industrial Manufacturing,Diversified Commercial Services
+IGL,Oil & Gas,LPG/CNG/PNG/LNG Supplier
+IIFL,NBFCs,Non Banking Financial Company (NBFC)
+IKS,IT Services,IT Enabled Services
+INDGN,Hospitals,"Healthcare Research, Analytics & Technology"
+INDHOTEL,Hotels,Hotels & Resorts
+INDIACEM,Cement,Cement & Cement Products
+INDIAMART,Consumer,Internet & Catalogue Retail
+INDIANB,Banks,Public Sector Bank
+INDIGO,Logistics,Airline
+INDUSINDBK,Banks,Private Sector Bank
+INDUSTOWER,Telecom,Telecom - Infrastructure
+INFY,IT Services,Computers - Software & Consulting
+INOXWIND,Capital Goods,Heavy Electrical Equipment
+INTELLECT,IT Services,Computers - Software & Consulting
+IOB,Banks,Public Sector Bank
+IOC,Oil & Gas,Refineries & Marketing
+IPCALAB,Pharma,Pharmaceuticals
+IRB,Infra EPC,Civil Construction
+IRCON,Railways,Railway EPC
+IRCTC,Hotels,"Tour, Travel Related Services"
+IREDA,NBFCs,Financial Institution
+IRFC,Financial Services,Railway Financing
+ITC,Industrial Manufacturing,Diversified FMCG
+ITCHOTELS,Hotels,Hotels & Resorts
+ITI,Industrial Manufacturing,Telecom -  Equipment & Accessories
+J&KBANK,Banks,Private Sector Bank
+JAINREC,Industrial Manufacturing,Diversified Metals
+JBCHEPHARM,Pharma,Pharmaceuticals
+JBMA,Autos,Auto Components & Equipments
+JINDALSAW,Industrial Manufacturing,Iron & Steel Products
+JINDALSTEL,Metals,Iron & Steel
+JIOFIN,NBFCs,Investment Company
+JKCEMENT,Cement,Cement & Cement Products
+JKTYRE,Autos,Tyres & Rubber Products
+JMFINANCIL,NBFCs,Holding Company
+JPPOWER,Power & Utilities,Power Generation
+JSL,Metals,Iron & Steel
+JSWCEMENT,Cement,Cement & Cement Products
+JSWDULUX,Consumer,Paints
+JSWENERGY,Power & Utilities,Power Generation
+JSWINFRA,Industrial Manufacturing,Port & Port services
+JSWSTEEL,Metals,Iron & Steel
+JUBLFOOD,Hotels,Restaurants
+JUBLINGREA,Chemicals,Specialty Chemicals
+JUBLPHARMA,Pharma,Pharmaceuticals
+JWL,Industrial Manufacturing,Railway Wagons
+JYOTICNC,Industrial Manufacturing,Industrial Products
+KAJARIACER,Consumer,Ceramics
+KALYANKJIL,Consumer,"Gems, Jewellery And Watches"
+KARURVYSYA,Banks,Private Sector Bank
+KAYNES,Electronics,EMS
+KEC,T&D,Transmission EPC
+KEI,Capital Goods,Cables & Conductors
+KFINTECH,Financial Services,"Depositories, Clearing Houses and Other Intermediaries"
+KIMS,Hospitals,Hospital
+KIRLOSENG,Industrial Manufacturing,"Compressors, Pumps & Diesel Engines"
+KOTAKBANK,Banks,Private Sector Bank
+KPIL,Infra EPC,Infrastructure EPC
+KPITTECH,IT Services,Computers - Software & Consulting
+KPRMILL,Industrial Manufacturing,Other Textile Products
+LALPATHLAB,Hospitals,Healthcare Service Provider
+LATENTVIEW,IT Services,Analytics
+LAURUSLABS,Pharma,Pharmaceuticals
+LEMONTREE,Hotels,Hotels & Resorts
+LENSKART,Consumer,Speciality Retail
+LGEINDIA,Consumer,Household Appliances
+LICHSGFIN,NBFCs,Housing Finance Company
+LICI,Financial Services,Life Insurance
+LINDEINDIA,Chemicals,Industrial Gases
+LLOYDSME,Industrial Manufacturing,Industrial Minerals
+LODHA,Real Estate,"Residential, Commercial Projects"
+LT,Infra EPC,Civil Construction
+LTF,NBFCs,Non Banking Financial Company (NBFC)
+LTFOODS,Consumer,Other Agricultural Products
+LTM,IT Services,Computers - Software & Consulting
+LTTS,IT Services,IT Enabled Services
+LUPIN,Pharma,Pharmaceuticals
+M&M,Autos,Passenger Cars & Utility Vehicles
+M&MFIN,NBFCs,Non Banking Financial Company (NBFC)
+MAHABANK,Banks,Public Sector Bank
+MANAPPURAM,NBFCs,Non Banking Financial Company (NBFC)
+MANKIND,Pharma,Pharmaceuticals
+MAPMYINDIA,IT Services,Digital Mapping
+MARICO,Consumer,Edible Oil
+MARUTI,Autos,Passenger Cars & Utility Vehicles
+MAXHEALTH,Hospitals,Hospital
+MAZDOCK,Defence,Shipbuilding
+MCX,Financial Services,Exchange and Data Platform
+MEDANTA,Hospitals,Hospital
+MEESHO,Consumer,E-Retail/ E-Commerce
+MFSL,Financial Services,Life Insurance
+MGL,Oil & Gas,LPG/CNG/PNG/LNG Supplier
+MINDACORP,Autos,Auto Components & Equipments
+MMTC,Industrial Manufacturing,Trading & Distributors
+MOTHERSON,Autos,Auto Components & Equipments
+MOTILALOFS,Financial Services,Stockbroking & Allied
+MPHASIS,IT Services,Computers - Software & Consulting
+MRF,Autos,Tyres & Rubber Products
+MRPL,Oil & Gas,Refineries & Marketing
+MSUMI,Autos,Auto Components & Equipments
+MUTHOOTFIN,NBFCs,Non Banking Financial Company (NBFC)
+NAM-INDIA,Financial Services,Asset Management Company
+NATCOPHARM,Pharma,Pharmaceuticals
+NATIONALUM,Metals,Aluminium
+NAUKRI,Consumer,Internet & Catalogue Retail
+NAVA,Power & Utilities,Power Generation
+NAVINFLUOR,Chemicals,Specialty Chemicals
+NBCC,Infra EPC,Civil Construction
+NCC,Infra EPC,Civil Construction
+NESTLEIND,Consumer,Packaged Foods
+NETWEB,IT Services,IT Enabled Services
+NEULANDLAB,Pharma,Pharmaceuticals
+NEWGEN,IT Services,Enterprise Software
+NH,Hospitals,Hospital
+NHPC,Power & Utilities,Power Generation
+NIACL,Financial Services,General Insurance
+NIVABUPA,Financial Services,General Insurance
+NLCINDIA,Power & Utilities,Power Generation
+NMDC,Industrial Manufacturing,Industrial Minerals
+NSLNISP,Metals,Iron & Steel
+NTPC,Power & Utilities,Power Generation
+NTPCGREEN,Power & Utilities,Power Generation
+NUVAMA,Financial Services,Stockbroking & Allied
+NUVOCO,Cement,Cement & Cement Products
+NYKAA,Consumer,E-Retail/ E-Commerce
+OBEROIRLTY,Real Estate,"Residential, Commercial Projects"
+OFSS,IT Services,Software Products
+OIL,Industrial Manufacturing,Oil Exploration & Production
+OLAELEC,Autos,2/3 Wheelers
+OLECTRA,Autos,Passenger Cars & Utility Vehicles
+ONESOURCE,Pharma,Pharmaceuticals
+ONGC,Industrial Manufacturing,Oil Exploration & Production
+PAGEIND,Industrial Manufacturing,Garments & Apparels
+PARADEEP,Chemicals,Fertilizers
+PATANJALI,Consumer,Edible Oil
+PAYTM,Industrial Manufacturing,Financial Technology (Fintech)
+PCBL,Chemicals,Carbon Black
+PERSISTENT,IT Services,Computers - Software & Consulting
+PETRONET,Oil & Gas,LPG/CNG/PNG/LNG Supplier
+PFC,NBFCs,Financial Institution
+PFIZER,Pharma,Pharmaceuticals
+PGEL,Consumer,Consumer Electronics
+PHOENIXLTD,Real Estate,"Residential, Commercial Projects"
+PIDILITIND,Chemicals,Specialty Chemicals
+PIIND,Chemicals,Pesticides & Agrochemicals
+PINELABS,Industrial Manufacturing,Financial Technology (Fintech)
+PIRAMALFIN,NBFCs,Housing Finance Company
+PNB,Banks,Public Sector Bank
+PNBHOUSING,NBFCs,Housing Finance Company
+POLICYBZR,Industrial Manufacturing,Financial Technology (Fintech)
+POLYCAB,Capital Goods,Cables & Conductors
+POLYMED,Industrial Manufacturing,Medical Equipment & Supplies
+POONAWALLA,NBFCs,Non Banking Financial Company (NBFC)
+POWERGRID,Power & Utilities,Power - Transmission
+POWERINDIA,Capital Goods,Heavy Electrical Equipment
+PPLPHARMA,Pharma,Pharmaceuticals
+PREMIERENE,Capital Goods,Other Electrical Equipment
+PRESTIGE,Real Estate,"Residential, Commercial Projects"
+PTCIL,Industrial Manufacturing,Other Industrial Products
+PVRINOX,Industrial Manufacturing,"Film Production, Distribution & Exhibition"
+PWL,Industrial Manufacturing,E-Learning
+RADICO,Industrial Manufacturing,Breweries & Distilleries
+RAILTEL,Railways,Railway Telecom
+RAINBOW,Hospitals,Hospital
+RAMCOCEM,Cement,Cement & Cement Products
+RBLBANK,Banks,Private Sector Bank
+RECLTD,NBFCs,Financial Institution
+REDINGTON,Industrial Manufacturing,Trading & Distributors
+RELIANCE,Oil & Gas,Refineries & Marketing
+RHIM,Industrial Manufacturing,Refractories
+RITES,Infra EPC,Civil Construction
+RKFORGE,Autos,Auto Components & Equipments
+RPOWER,Power & Utilities,Power Generation
+RRKABEL,Industrial Manufacturing,Cables - Electricals
+RVNL,Railways,Railway EPC
+SAGILITY,IT Services,IT Enabled Services
+SAIL,Metals,Iron & Steel
+SAILIFE,Pharma,Pharmaceuticals
+SAMMAANCAP,NBFCs,Housing Finance Company
+SAPPHIRE,Consumer,QSR
+SARDAEN,Metals,Iron & Steel
+SAREGAMA,Industrial Manufacturing,Media & Entertainment
+SBFC,NBFCs,Non Banking Financial Company (NBFC)
+SBICARD,NBFCs,Non Banking Financial Company (NBFC)
+SBILIFE,Financial Services,Life Insurance
+SBIN,Banks,Public Sector Bank
+SCHAEFFLER,Autos,Auto Components & Equipments
+SCHNEIDER,Capital Goods,Heavy Electrical Equipment
+SCI,Logistics,Shipping
+SHREECEM,Cement,Cement & Cement Products
+SHRIRAMFIN,NBFCs,Non Banking Financial Company (NBFC)
+SHYAMMETL,Industrial Manufacturing,Iron & Steel Products
+SIEMENS,Capital Goods,Industrial Engineering
+SIGNATURE,Real Estate,"Residential, Commercial Projects"
+SJVN,Power & Utilities,Power Generation
+SOBHA,Real Estate,"Residential, Commercial Projects"
+SOLARINDS,Chemicals,Explosives
+SONACOMS,Autos,Auto Components & Equipments
+SONATSOFTW,IT Services,Software Services
+SPLPETRO,Chemicals,Petrochemicals
+SRF,Chemicals,Commodity Chemicals
+STARHEALTH,Financial Services,General Insurance
+SUMICHEM,Chemicals,Pesticides & Agrochemicals
+SUNDARMFIN,NBFCs,Non Banking Financial Company (NBFC)
+SUNPHARMA,Pharma,Pharmaceuticals
+SUNTV,Industrial Manufacturing,TV Broadcasting & Software Production
+SUPREMEIND,Industrial Manufacturing,Plastic Products - Industrial
+SUZLON,Capital Goods,Heavy Electrical Equipment
+SWANCORP,Chemicals,Petrochemicals
+SWIGGY,Consumer,E-Retail/ E-Commerce
+SYNGENE,Hospitals,"Healthcare Research, Analytics & Technology"
+SYRMA,Electronics,EMS
+TARIL,Capital Goods,Heavy Electrical Equipment
+TATACAP,NBFCs,Non Banking Financial Company (NBFC)
+TATACHEM,Chemicals,Commodity Chemicals
+TATACOMM,Telecom,Telecom - Cellular & Fixed line services
+TATACONSUM,Consumer,Tea & Coffee
+TATAELXSI,IT Services,Computers - Software & Consulting
+TATAINVEST,NBFCs,Investment Company
+TATAPOWER,Power & Utilities,Integrated Power Utilities
+TATASTEEL,Metals,Iron & Steel
+TATATECH,IT Services,IT Enabled Services
+TBOTEK,Hotels,"Tour, Travel Related Services"
+TCS,IT Services,Computers - Software & Consulting
+TECHM,IT Services,Computers - Software & Consulting
+TECHNOE,Infra EPC,Civil Construction
+TEGA,Industrial Manufacturing,Industrial Products
+TEJASNET,Industrial Manufacturing,Telecom -  Equipment & Accessories
+TENNIND,Autos,Auto Components & Equipments
+THELEELA,Hotels,Hotels & Resorts
+THERMAX,Capital Goods,Heavy Electrical Equipment
+TIINDIA,Autos,Auto Components & Equipments
+TIMKEN,Industrial Manufacturing,Abrasives & Bearings
+TITAGARH,Railways,Railway Equipment
+TITAN,Consumer,"Gems, Jewellery And Watches"
+TMCV,Industrial Manufacturing,Commercial Vehicles
+TMPV,Autos,Passenger Cars & Utility Vehicles
+TORNTPHARM,Pharma,Pharmaceuticals
+TORNTPOWER,Power & Utilities,Integrated Power Utilities
+TRAVELFOOD,Hotels,Restaurants
+TRENT,Consumer,Speciality Retail
+TRIDENT,Industrial Manufacturing,Other Textile Products
+TRITURBINE,Capital Goods,Heavy Electrical Equipment
+TTML,Telecom,Telecom - Cellular & Fixed line services
+TVSMOTOR,Autos,2/3 Wheelers
+UBL,Industrial Manufacturing,Breweries & Distilleries
+UCOBANK,Banks,Public Sector Bank
+ULTRACEMCO,Cement,Cement & Cement Products
+UNIONBANK,Banks,Public Sector Bank
+UNITDSPR,Industrial Manufacturing,Breweries & Distilleries
+UNOMINDA,Autos,Auto Components & Equipments
+UPL,Chemicals,Pesticides & Agrochemicals
+URBANCO,Consumer,E-Retail/ E-Commerce
+USHAMART,Industrial Manufacturing,Iron & Steel Products
+UTIAMC,Financial Services,Asset Management Company
+VBL,Industrial Manufacturing,Other Beverages
+VEDL,Industrial Manufacturing,Diversified Metals
+VIJAYA,Hospitals,Healthcare Service Provider
+VMM,Consumer,Diversified Retail
+VOLTAS,Consumer,Household Appliances
+VTL,Industrial Manufacturing,Other Textile Products
+WAAREEENER,Capital Goods,Other Electrical Equipment
+WELCORP,Industrial Manufacturing,Iron & Steel Products
+WELSPUNLIV,Industrial Manufacturing,Other Textile Products
+WHIRLPOOL,Consumer,Household Appliances
+WIPRO,IT Services,Computers - Software & Consulting
+WOCKPHARMA,Pharma,Pharmaceuticals
+YESBANK,Banks,Private Sector Bank
+ZEEL,Industrial Manufacturing,TV Broadcasting & Software Production
+ZENSARTECH,IT Services,Computers - Software & Consulting
+ZENTEC,Defence,Drones
+ZFCVINDIA,Autos,Auto Components & Equipments
+ZYDUSLIFE,Pharma,Pharmaceuticals
+ZYDUSWELL,Consumer,Packaged Foods

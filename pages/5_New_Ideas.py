@@ -1,374 +1,535 @@
-"""
-New Ideas Engine
-────────────────
-Automated flagging of mispricing candidates using rules + order book scores.
-Each idea gets: title, why flagged, key metrics, what market may be missing,
-risks, next step, confidence level.
-"""
+from __future__ import annotations
 
-import streamlit as st
+import numpy as np
 import pandas as pd
-from datetime import datetime
+import streamlit as st
 
 st.set_page_config(
-    page_title="New Ideas — India Terminal",
-    layout="wide", initial_sidebar_state="expanded",
+    page_title="Ideas Lab — India Terminal",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-from utils.formatting import (
-    inject_css, page_header, section_label, kpi_card, fmt_pct,
-    fmt_cr, fmt_ratio, info_block, warn_block, ok_block, ai_box,
-    badge_html, score_bar, ACCENT, POS, NEG, TEXT3, BORDER, BG2,
-)
-from utils.data_loader import load_order_book, load_full_universe, load_news
-from utils.scoring import score_order_book_df, CLASSIFICATION_ORDER
+from utils.formatting import inject_css, page_header, section_label, kpi_card, info_block, warn_block, html_block
+from utils.data_loader import load_full_universe, load_order_book, load_news, load_filings
+
 
 inject_css()
 
-# ── Load data ─────────────────────────────────────────────────────────────────
+
+PERIOD_RET_MAP = {
+    "1M": "return_1m",
+    "3M": "return_3m",
+    "6M": "return_6m",
+    "1Y": "return_1y",
+    "3Y": "return_3y",
+    "5Y": "return_5y",
+    "10Y": "return_10y",
+}
+
+PERIOD_QUARTILE_MAP = {
+    "1M": "quartile_1m",
+    "3M": "quartile_3m",
+    "6M": "quartile_6m",
+    "1Y": "quartile_1y",
+    "3Y": "quartile_3y",
+    "5Y": "quartile_5y",
+    "10Y": "quartile_10y",
+}
+
+
 @st.cache_data(ttl=300)
-def _load_all():
-    ob   = load_order_book()
-    ob_s = score_order_book_df(ob) if not ob.empty else pd.DataFrame()
-    uni  = load_full_universe()
+def _load() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    uni = load_full_universe()
+    ob = load_order_book()
     news = load_news()
-    return ob_s, uni, news
+    filings = load_filings()
+    return uni, ob, news, filings
 
-ob_df, uni_df, news_df = _load_all()
 
-page_header("New Ideas Engine", "Automated mispricing and opportunity flags")
+def _safe_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    for col in cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
 
-# ── Sidebar filters ───────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown('<div class="sec-label">Idea Filters</div>', unsafe_allow_html=True)
-    idea_types = st.multiselect(
-        "Flag Types",
-        [
-            "OB > 2x Revenue",
-            "OB > Market Cap",
-            "Strong Inflows + Weak Price",
-            "Down >20% from High + Improving Fundamentals",
-            "Improving Margins",
-            "Recent Large Order Win",
-            "High Score + Low Valuation",
-        ],
-        default=[
-            "OB > 2x Revenue",
-            "OB > Market Cap",
-            "Strong Inflows + Weak Price",
-            "High Score + Low Valuation",
-        ],
+
+def _build_event_flags(df: pd.DataFrame, news_df: pd.DataFrame, filings_df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["has_recent_news"] = False
+    out["has_recent_filing"] = False
+    out["latest_event"] = pd.NA
+
+    news_map: dict[str, str] = {}
+    filing_map: dict[str, str] = {}
+
+    if not news_df.empty and "tickers_mentioned" in news_df.columns:
+        tmp = news_df.copy()
+        if "date" in tmp.columns:
+            tmp = tmp.sort_values("date", ascending=False)
+        for _, row in tmp.iterrows():
+            tickers = [x.strip().upper() for x in str(row.get("tickers_mentioned", "")).split("|") if x.strip()]
+            headline = str(row.get("headline", "")).strip()
+            for ticker in tickers:
+                if ticker and ticker not in news_map:
+                    news_map[ticker] = headline
+
+    if not filings_df.empty and "ticker" in filings_df.columns:
+        tmp = filings_df.copy()
+        if "date" in tmp.columns:
+            tmp = tmp.sort_values("date", ascending=False)
+        for _, row in tmp.iterrows():
+            ticker = str(row.get("ticker", "")).strip().upper()
+            subject = str(row.get("subject", "")).strip()
+            if ticker and ticker not in filing_map:
+                filing_map[ticker] = subject
+
+    out["has_recent_news"] = out["ticker"].astype(str).str.upper().map(lambda t: t in news_map)
+    out["has_recent_filing"] = out["ticker"].astype(str).str.upper().map(lambda t: t in filing_map)
+    out["latest_event"] = out["ticker"].astype(str).str.upper().map(
+        lambda t: filing_map.get(t) or news_map.get(t) or pd.NA
     )
-    min_conf = st.slider("Min Confidence (Order Book Data)", 0, 100, 50)
+    return out
 
 
-# ── Idea generator ────────────────────────────────────────────────────────────
-def _make_idea(ticker, company, sector, flag_type, reason, metrics, what_missing,
-               risks, next_step, confidence, action, score=None):
-    return {
-        "ticker": ticker, "company": company, "sector": sector,
-        "flag_type": flag_type, "reason": reason, "metrics": metrics,
-        "what_missing": what_missing, "risks": risks, "next_step": next_step,
-        "confidence": confidence, "action": action, "score": score,
-        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-    }
+def _build_derived_columns(df: pd.DataFrame, ob_df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out = _safe_numeric(
+        out,
+        [
+            "pe", "industry_pe", "historical_pe_3y", "historical_pe_5y", "historical_pe_10y",
+            "roe", "roce", "debt_equity", "volume_ratio_30d", "dist_52w_high_pct", "dist_52w_low_pct",
+            "market_cap_cr", "promoter_holding", "fii_holding", "dii_holding",
+            "revenue_growth_1y", "revenue_growth_3y", "revenue_growth_5y",
+            "pat_growth_1y", "pat_growth_3y", "pat_growth_5y",
+            "ebitda_margin", "current_ratio", "interest_coverage",
+        ] + list(PERIOD_RET_MAP.values()),
+    )
 
+    for hist_col, label in [("historical_pe_3y", "pe_vs_hist_3y"), ("historical_pe_5y", "pe_vs_hist_5y"), ("historical_pe_10y", "pe_vs_hist_10y")]:
+        if hist_col in out.columns and "pe" in out.columns:
+            hist = pd.to_numeric(out[hist_col], errors="coerce")
+            pe = pd.to_numeric(out["pe"], errors="coerce")
+            out[label] = np.where((hist > 0) & pe.notna(), (pe / hist - 1.0) * 100, np.nan)
 
-ideas = []
+    if not ob_df.empty:
+        ob_cols = [
+            "ticker", "ob_revenue_ratio", "ob_marketcap_ratio", "ob_ev_ratio",
+            "order_book_cr", "order_inflow_growth_pct", "classification", "confidence_score",
+        ]
+        ob_keep = [c for c in ob_cols if c in ob_df.columns]
+        if ob_keep:
+            ob_latest = ob_df[ob_keep].copy().drop_duplicates(subset=["ticker"], keep="last")
+            out = out.merge(ob_latest, on="ticker", how="left")
 
-# ── Rule 1: OB > 2x Revenue ──────────────────────────────────────────────────
-if "OB > 2x Revenue" in idea_types and not ob_df.empty:
-    cands = ob_df[
-        (ob_df.get("ob_revenue_ratio", pd.Series(dtype=float)) >= 2) &
-        (ob_df.get("confidence_score", pd.Series(dtype=float)) >= min_conf)
-    ].copy()
-    for _, r in cands.iterrows():
-        score = r.get("ob_score", 0)
-        ob_rev = r.get("ob_revenue_ratio", 0)
-        ideas.append(_make_idea(
-            ticker    = r.get("ticker",""),
-            company   = r.get("company_name",""),
-            sector    = r.get("sector",""),
-            flag_type = "OB > 2x Revenue",
-            reason    = (
-                f"Order book of {fmt_cr(r.get('order_book_cr'))} is "
-                f"{fmt_ratio(ob_rev)} of TTM revenue, providing "
-                f"{ob_rev:.1f} years of revenue visibility."
-            ),
-            metrics = {
-                "Order Book": fmt_cr(r.get("order_book_cr")),
-                "OB/Rev":     fmt_ratio(ob_rev),
-                "OB/MCap":    fmt_ratio(r.get("ob_marketcap_ratio")),
-                "Rev Gr %":   fmt_pct(r.get("revenue_growth_pct")),
-                "OB Score":   f"{score:.0f}/100",
-            },
-            what_missing = (
-                "The market may be pricing based on current revenue run-rate rather than "
-                "the embedded revenue visibility from the order book. If execution pace "
-                "improves, consensus estimates could see material upgrades."
-            ),
-            risks = (
-                "Order execution risk, margin pressure from large fixed-price contracts, "
-                "receivables build-up, customer concentration."
-            ),
-            next_step  = "Verify order book composition, margin profile per segment, and receivables trend.",
-            confidence = int(r.get("confidence_score", 50)),
-            action     = "Research" if score >= 55 else "Watch",
-            score      = score,
-        ))
-
-# ── Rule 2: OB > Market Cap ──────────────────────────────────────────────────
-if "OB > Market Cap" in idea_types and not ob_df.empty:
-    cands = ob_df[
-        (ob_df.get("ob_marketcap_ratio", pd.Series(dtype=float)) >= 1.0) &
-        (ob_df.get("confidence_score", pd.Series(dtype=float)) >= min_conf)
-    ].copy()
-    for _, r in cands.iterrows():
-        score = r.get("ob_score", 0)
-        ideas.append(_make_idea(
-            ticker    = r.get("ticker",""),
-            company   = r.get("company_name",""),
-            sector    = r.get("sector",""),
-            flag_type = "OB > Market Cap",
-            reason    = (
-                f"Order book ({fmt_cr(r.get('order_book_cr'))}) exceeds market cap "
-                f"({fmt_cr(r.get('market_cap_cr'))}). OB/MCap = "
-                f"{fmt_ratio(r.get('ob_marketcap_ratio'))}."
-            ),
-            metrics = {
-                "Order Book":   fmt_cr(r.get("order_book_cr")),
-                "Market Cap":   fmt_cr(r.get("market_cap_cr")),
-                "OB/MCap":      fmt_ratio(r.get("ob_marketcap_ratio")),
-                "EV/EBITDA":    fmt_ratio(r.get("peer_ev_ebitda")),
-                "OB Score":     f"{score:.0f}/100",
-            },
-            what_missing = (
-                "Extreme disconnect between current market cap and embedded order book value. "
-                "Even a modest improvement in execution and margins could generate "
-                "multi-year earnings visibility that market is not pricing."
-            ),
-            risks = "Execution risk, working capital intensity, government-dependent revenue.",
-            next_step  = "Analyse execution track record over last 3 years and working capital efficiency.",
-            confidence = int(r.get("confidence_score", 50)),
-            action     = "Research",
-            score      = score,
-        ))
-
-# ── Rule 3: Strong Inflows + Weak Price ──────────────────────────────────────
-if "Strong Inflows + Weak Price" in idea_types and not ob_df.empty:
-    merged = ob_df.copy()
-    if not uni_df.empty and "return_1y" in uni_df.columns:
-        merged = merged.merge(
-            uni_df[["ticker","return_1y"]].rename(columns={"return_1y":"price_ret_1y"}),
-            on="ticker", how="left",
+    # Useful ranks / flags
+    if "dist_52w_low_pct" in out.columns:
+        out["near_52w_low"] = out["dist_52w_low_pct"] <= 10
+    if "dist_52w_high_pct" in out.columns:
+        out["near_52w_high"] = out["dist_52w_high_pct"] >= -10
+    if "volume_ratio_30d" in out.columns:
+        out["volume_shock"] = out["volume_ratio_30d"] >= 2
+    if "market_cap_cr" in out.columns:
+        out["mcap_bucket"] = np.select(
+            [out["market_cap_cr"] >= 100000, out["market_cap_cr"] >= 10000],
+            ["Large Cap", "Mid Cap"],
+            default="Small Cap",
         )
-    if "order_inflow_growth_pct" in merged.columns:
-        ret_col = "price_ret_1y" if "price_ret_1y" in merged.columns else None
-        if ret_col:
-            cands = merged[
-                (merged["order_inflow_growth_pct"] >= 20) &
-                (merged[ret_col] < -0.10) &
-                (merged.get("confidence_score", pd.Series(50, index=merged.index)) >= min_conf)
-            ]
-            for _, r in cands.iterrows():
-                score = r.get("ob_score", 0)
-                ideas.append(_make_idea(
-                    ticker    = r.get("ticker",""),
-                    company   = r.get("company_name",""),
-                    sector    = r.get("sector",""),
-                    flag_type = "Strong Inflows + Weak Price",
-                    reason    = (
-                        f"Order inflows growing {fmt_pct(r.get('order_inflow_growth_pct'))} YoY "
-                        f"while stock is down {fmt_pct((r.get('price_ret_1y',0) or 0)*100)} in 1Y. "
-                        "Potential divergence between fundamentals and price."
-                    ),
-                    metrics = {
-                        "Inflow Gr":  fmt_pct(r.get("order_inflow_growth_pct")),
-                        "OB/Rev":     fmt_ratio(r.get("ob_revenue_ratio")),
-                        "1Y Return":  fmt_pct((r.get("price_ret_1y",0) or 0)*100),
-                        "OB Score":   f"{score:.0f}/100",
-                    },
-                    what_missing = (
-                        "Strong order inflow growth suggests business momentum is intact, "
-                        "but the stock may be pricing in worst-case execution or macro fears. "
-                        "Fundamental recovery + execution improvement could re-rate the stock."
-                    ),
-                    risks = "Earnings delivery risk, sector rotation, macro headwinds.",
-                    next_step  = "Check recent concall for guidance and execution commentary.",
-                    confidence = int(r.get("confidence_score", 50)),
-                    action     = "Watch",
-                    score      = score,
-                ))
+    return out
 
-# ── Rule 4: High Score + Low Valuation ───────────────────────────────────────
-if "High Score + Low Valuation" in idea_types and not ob_df.empty:
-    cands = ob_df[
-        (ob_df.get("ob_score", pd.Series(dtype=float)) >= 65) &
-        (ob_df.get("ob_ev_ratio", pd.Series(dtype=float)) >= 0.7) &
-        (ob_df.get("confidence_score", pd.Series(dtype=float)) >= min_conf)
-    ]
-    for _, r in cands.iterrows():
-        score = r.get("ob_score", 0)
-        ideas.append(_make_idea(
-            ticker    = r.get("ticker",""),
-            company   = r.get("company_name",""),
-            sector    = r.get("sector",""),
-            flag_type = "High Score + Low Valuation",
-            reason    = (
-                f"OB Score {score:.0f}/100 with OB/EV ratio of {fmt_ratio(r.get('ob_ev_ratio'))}. "
-                f"Order book exceeds 70% of EV — indicating potential value embedded in backlog."
-            ),
-            metrics = {
-                "OB Score":   f"{score:.0f}/100",
-                "OB/EV":      fmt_ratio(r.get("ob_ev_ratio")),
-                "OB/Rev":     fmt_ratio(r.get("ob_revenue_ratio")),
-                "EV/EBITDA":  fmt_ratio(r.get("peer_ev_ebitda")),
-            },
-            what_missing = (
-                "High-scoring company trading at a discount to peers on EV/EBITDA "
-                "despite superior order book visibility. Potential re-rating as earnings upgrade cycle begins."
-            ),
-            risks = "Execution pace, margin normalisation, sector derating.",
-            next_step  = "Build peer comparison table and DCF model.",
-            confidence = int(r.get("confidence_score", 50)),
-            action     = "Research",
-            score      = score,
-        ))
 
-# ── Deduplicate ideas ─────────────────────────────────────────────────────────
-seen_tickers: set = set()
-unique_ideas = []
-for idea in sorted(ideas, key=lambda x: (-(x.get("score") or 0), x["ticker"])):
-    key = (idea["ticker"], idea["flag_type"])
-    if key not in seen_tickers:
-        seen_tickers.add(key)
-        unique_ideas.append(idea)
+def _idea_score(df: pd.DataFrame, period_a: str, period_b: str) -> pd.DataFrame:
+    out = df.copy()
+    score = pd.Series(0.0, index=out.index)
+    reasons = pd.Series("", index=out.index, dtype=object)
 
-# ── Summary KPIs ──────────────────────────────────────────────────────────────
-section_label("Ideas Summary")
-total  = len(unique_ideas)
-n_res  = sum(1 for i in unique_ideas if i["action"] == "Research")
-n_watch= sum(1 for i in unique_ideas if i["action"] == "Watch")
-avg_sc = sum(i.get("score") or 0 for i in unique_ideas) / total if total else 0
+    qa = PERIOD_QUARTILE_MAP.get(period_a)
+    qb = PERIOD_QUARTILE_MAP.get(period_b)
+    if qa in out.columns:
+        score += np.where(out[qa] == "Q1", 18, np.where(out[qa] == "Q4", 8, 0))
+        reasons = np.where(out[qa] == "Q1", reasons + f"{period_a} Q1; ", reasons)
+    if qb in out.columns:
+        score += np.where(out[qb] == "Q1", 14, np.where(out[qb] == "Q4", 6, 0))
+        reasons = np.where(out[qb] == "Q1", reasons + f"{period_b} Q1; ", reasons)
 
-kcols = st.columns(4)
-kpi_data = [
-    ("Total Ideas", str(total), ""),
-    ("Research",    str(n_res),   "Actionable"),
-    ("Watch",       str(n_watch), "Monitor"),
-    ("Avg OB Score", f"{avg_sc:.0f}/100", ""),
-]
-for col, (l, v, s) in zip(kcols, kpi_data):
-    with col:
-        kpi_card(l, v, s)
+    if "pe_vs_hist_5y" in out.columns:
+        pe_gap = pd.to_numeric(out["pe_vs_hist_5y"], errors="coerce")
+        score += np.where(pe_gap <= -20, 20, np.where(pe_gap <= 0, 10, 0))
+        reasons = np.where(pe_gap <= -20, reasons + "P/E < 5Y avg; ", reasons)
 
-st.markdown("<br>", unsafe_allow_html=True)
+    if "roe" in out.columns:
+        roe = pd.to_numeric(out["roe"], errors="coerce")
+        score += np.where(roe >= 20, 14, np.where(roe >= 14, 8, 0))
+        reasons = np.where(roe >= 20, reasons + "high ROE; ", reasons)
 
-# ── Idea cards ────────────────────────────────────────────────────────────────
-if not unique_ideas:
-    if ob_df.empty:
-        warn_block("Order book database is empty. Add companies in the Order Book Screener.")
-    else:
-        info_block("No ideas match current filters. Adjust thresholds in the sidebar.")
-else:
-    section_label(f"{total} Flagged Ideas")
+    if "debt_equity" in out.columns:
+        de = pd.to_numeric(out["debt_equity"], errors="coerce")
+        score += np.where(de <= 0.5, 8, np.where(de <= 1.2, 4, 0))
+        reasons = np.where(de <= 0.5, reasons + "clean balance sheet; ", reasons)
 
-    for idea in unique_ideas:
-        score = idea.get("score") or 0
-        action = idea.get("action", "Watch")
-        card_cls = "hc" if score >= 70 else ("wl" if score >= 55 else "res")
-        action_col = POS if action == "Research" else ACCENT if action == "Watch" else TEXT3
+    if "dist_52w_low_pct" in out.columns:
+        low = pd.to_numeric(out["dist_52w_low_pct"], errors="coerce")
+        score += np.where(low <= 10, 10, np.where(low <= 20, 5, 0))
+        reasons = np.where(low <= 10, reasons + "near 52W low; ", reasons)
 
-        metrics_html = "".join(
-            f'<span class="idea-tag">{k}: {v}</span>'
-            for k, v in idea["metrics"].items()
-        )
+    if "volume_ratio_30d" in out.columns:
+        vol = pd.to_numeric(out["volume_ratio_30d"], errors="coerce")
+        score += np.where(vol >= 3, 10, np.where(vol >= 1.5, 5, 0))
+        reasons = np.where(vol >= 3, reasons + "volume shock; ", reasons)
 
-        flag_badge_col = {
-            "OB > 2x Revenue":                    "#2563eb",
-            "OB > Market Cap":                    "#16a34a",
-            "Strong Inflows + Weak Price":         "#d97706",
-            "High Score + Low Valuation":          "#7c3aed",
-            "Down >20% from High + Improving Fundamentals": "#0891b2",
-        }.get(idea["flag_type"], "#475569")
+    if "ob_marketcap_ratio" in out.columns:
+        ob_mc = pd.to_numeric(out["ob_marketcap_ratio"], errors="coerce")
+        score += np.where(ob_mc >= 1.0, 12, np.where(ob_mc >= 0.75, 6, 0))
+        reasons = np.where(ob_mc >= 1.0, reasons + "OB>MCap optional; ", reasons)
 
-        st.markdown(
-            f"""<div class="idea-card {card_cls}">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.4rem;">
-                <div>
-                  <span style="font-size:0.95rem;font-weight:600;color:#e2e8f0;">
-                    {idea['ticker']}</span>
-                  <span style="font-size:0.8rem;color:#64748b;margin-left:0.6rem;">
-                    {idea['company']}</span>
-                  <span style="font-size:0.72rem;color:#475569;margin-left:0.5rem;">
-                    {idea['sector']}</span>
-                </div>
-                <div style="display:flex;gap:0.5rem;align-items:center;">
-                  <span class="badge" style="background:#111827;border:1px solid {flag_badge_col};
-                    color:{flag_badge_col};">{idea['flag_type']}</span>
-                  <span class="badge" style="background:#111827;border:1px solid {action_col};
-                    color:{action_col};">{action}</span>
-                  {score_bar(score, width=60)}
-                </div>
-              </div>
-              <div class="idea-body">
-                <div style="margin-bottom:0.5rem;">{idea['reason']}</div>
-                <div class="idea-grid">{metrics_html}</div>
-                <div style="margin-top:0.6rem;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-                  <div>
-                    <div style="font-size:0.62rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.2rem;">
-                      What Market May Be Missing</div>
-                    <div style="font-size:0.78rem;color:#94a3b8;">{idea['what_missing']}</div>
-                  </div>
-                  <div>
-                    <div style="font-size:0.62rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.2rem;">
-                      Key Risks</div>
-                    <div style="font-size:0.78rem;color:#94a3b8;">{idea['risks']}</div>
-                  </div>
-                </div>
-                <div style="margin-top:0.5rem;padding-top:0.4rem;border-top:1px solid #1e2d45;
-                  display:flex;justify-content:space-between;align-items:center;">
-                  <div style="font-size:0.75rem;color:#64748b;">
-                    <span style="color:#475569;">Next Step:</span> {idea['next_step']}
-                  </div>
-                  <div style="font-size:0.7rem;color:#475569;font-family:'IBM Plex Mono',monospace;">
-                    Confidence: {idea['confidence']}/100
-                  </div>
-                </div>
-              </div>
-            </div>""",
-            unsafe_allow_html=True,
-        )
+    if "has_recent_news" in out.columns and "has_recent_filing" in out.columns:
+        evt = out["has_recent_news"].fillna(False) | out["has_recent_filing"].fillna(False)
+        score += np.where(evt, 5, 0)
+        reasons = np.where(evt, reasons + "recent event; ", reasons)
 
-# ── Recent order win news as quick ideas ─────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
-section_label("Recent Order Wins from News Feed")
+    out["idea_score"] = score.round(1)
+    out["idea_reason"] = pd.Series(reasons, index=out.index).str.rstrip("; ").replace("", "No standout trigger")
+    return out
 
-if not news_df.empty and "categories" in news_df.columns:
-    order_news = news_df[
-        news_df["categories"].astype(str).str.contains("order", case=False, na=False)
-    ]
-    if order_news.empty:
-        info_block("No order win news in feed. Populate data/news.csv.")
-    else:
-        for _, row in order_news.head(5).iterrows():
-            s = row.get("sentiment", "neutral")
-            col_map = {"positive": "#22c55e", "negative": "#ef4444", "neutral": "#64748b"}
-            c = col_map.get(str(s).lower(), "#64748b")
-            st.markdown(
-                f"""<div class="fil-row">
-                      <div class="fil-time">{str(row.get('date',''))[:10]}</div>
-                      <div class="fil-body">
-                        <div class="fil-title">{row.get('headline','')}</div>
-                        <div class="fil-meta">
-                          {row.get('source','')} &nbsp;|&nbsp;
-                          <span style="color:{c};">{str(s).upper()}</span>
-                          &nbsp;|&nbsp; {row.get('tickers_mentioned','')}
-                        </div>
-                        <div class="fil-ai">{row.get('ai_summary','')}</div>
-                      </div>
-                    </div>""",
-                unsafe_allow_html=True,
+
+def _signal_buckets(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    out: dict[str, pd.DataFrame] = {}
+
+    if {"pe_vs_hist_5y", "roe", "debt_equity"}.issubset(df.columns):
+        out["Value Below History"] = df[
+            (df["pe_vs_hist_5y"] <= -20)
+            & (df["roe"] >= 14)
+            & ((df["debt_equity"].isna()) | (df["debt_equity"] <= 1.2))
+        ].sort_values(["pe_vs_hist_5y", "roe"], ascending=[True, False])
+
+    if {"quartile_5y", "quartile_3m", "dist_52w_low_pct"}.issubset(df.columns):
+        out["Fallen Compounders"] = df[
+            (df["quartile_5y"] == "Q1")
+            & (df["quartile_3m"].isin(["Q3", "Q4"]))
+            & (df["dist_52w_low_pct"] <= 20)
+        ].sort_values("dist_52w_low_pct", ascending=True)
+
+    if {"quartile_3y", "quartile_1m", "volume_ratio_30d"}.issubset(df.columns):
+        out["Momentum Re-Acceleration"] = df[
+            (df["quartile_3y"].isin(["Q1", "Q2"]))
+            & (df["quartile_1m"] == "Q1")
+            & (df["volume_ratio_30d"] >= 1.5)
+        ].sort_values("return_1m", ascending=False)
+
+    if {"ob_marketcap_ratio", "ob_revenue_ratio"}.issubset(df.columns):
+        out["Order Book Optional"] = df[
+            ((df["ob_marketcap_ratio"] >= 0.75) | (df["ob_revenue_ratio"] >= 2.0))
+        ].sort_values(["ob_marketcap_ratio", "ob_revenue_ratio"], ascending=False)
+
+    if {"has_recent_news", "has_recent_filing", "volume_ratio_30d", "return_1d"}.issubset(df.columns):
+        out["Event-Backed Movers"] = df[
+            (df["has_recent_news"] | df["has_recent_filing"])
+            & (df["volume_ratio_30d"] >= 1.5)
+            & (df["return_1d"].abs() >= 1.5)
+        ].sort_values("return_1d", ascending=False)
+
+    return out
+
+
+uni_df, ob_df, news_df, filings_df = _load()
+
+page_header(
+    "",
+    "",
+)
+
+if uni_df.empty:
+    warn_block("No merged universe available. Refresh prices and fundamentals first.")
+    st.stop()
+
+df = _build_event_flags(_build_derived_columns(uni_df, ob_df), news_df, filings_df)
+
+with st.sidebar:
+    html_block('<div class="sec-label">Idea Filters</div>')
+    preset = st.selectbox(
+        "Preset",
+        [
+            "Custom",
+            "Value Dislocation",
+            "Fallen Compounders",
+            "Momentum Re-Acceleration",
+            "Event-Backed Movers",
+            "Order Book Optional",
+        ],
+        index=0,
+    )
+    sectors = ["All"] + sorted(df["sector"].dropna().astype(str).unique().tolist()) if "sector" in df.columns else ["All"]
+    sector_f = st.selectbox("Sector", sectors)
+    mcap_f = st.selectbox("MCap Bucket", ["All", "Large Cap", "Mid Cap", "Small Cap"])
+    only_event = st.checkbox("Only with recent news / filing", value=False)
+    only_ob = st.checkbox("Only with order-book data", value=False)
+
+    st.markdown("---")
+    period_a = st.selectbox("Period A", list(PERIOD_RET_MAP.keys()), index=3)
+    period_b = st.selectbox("Period B", list(PERIOD_RET_MAP.keys()), index=4)
+    quartiles = st.multiselect("Quartiles", ["Q1", "Q2", "Q3", "Q4"], default=["Q1", "Q4"])
+
+    st.markdown("---")
+    pe_mode = st.selectbox("P/E vs History", ["Any", "Below 3Y Avg", "Below 5Y Avg", "Below 10Y Avg", "Above 3Y Avg", "Above 5Y Avg"])
+    near_52 = st.selectbox("52W Position", ["Any", "Near 52W Low", "Near 52W High"])
+    min_roe = st.slider("Min ROE %", 0, 40, 12)
+    max_de = st.slider("Max Debt/Equity", 0.0, 3.0, 1.5, 0.1)
+    min_vol = st.slider("Min Volume Shock", 1.0, 10.0, 1.0, 0.25)
+
+    st.markdown("---")
+    ob_mode = st.selectbox("Order Book Signal", ["Any", "OB/MCap > 0.75x", "OB/MCap > 1.0x", "OB/Revenue > 2.0x"])
+    min_ret_3y = st.slider("Min 3Y Return %", -100, 400, -100)
+    min_ret_10y = st.slider("Min 10Y Return %", -100, 2000, -100)
+
+fdf = df.copy()
+if sector_f != "All" and "sector" in fdf.columns:
+    fdf = fdf[fdf["sector"] == sector_f]
+if mcap_f != "All" and "mcap_bucket" in fdf.columns:
+    fdf = fdf[fdf["mcap_bucket"] == mcap_f]
+if only_event:
+    fdf = fdf[fdf["has_recent_news"] | fdf["has_recent_filing"]]
+if only_ob:
+    fdf = fdf[fdf["ob_marketcap_ratio"].notna() | fdf["ob_revenue_ratio"].notna()]
+
+qa_col = PERIOD_QUARTILE_MAP[period_a]
+qb_col = PERIOD_QUARTILE_MAP[period_b]
+if qa_col in fdf.columns:
+    fdf = fdf[fdf[qa_col].isin(quartiles)]
+if qb_col in fdf.columns:
+    fdf = fdf[fdf[qb_col].isin(quartiles)]
+
+if "roe" in fdf.columns:
+    fdf = fdf[(fdf["roe"].isna()) | (fdf["roe"] >= min_roe)]
+if "debt_equity" in fdf.columns:
+    fdf = fdf[(fdf["debt_equity"].isna()) | (fdf["debt_equity"] <= max_de)]
+if "volume_ratio_30d" in fdf.columns:
+    fdf = fdf[(fdf["volume_ratio_30d"].isna()) | (fdf["volume_ratio_30d"] >= min_vol)]
+if "return_3y" in fdf.columns:
+    fdf = fdf[(fdf["return_3y"].isna()) | (fdf["return_3y"] >= min_ret_3y)]
+if "return_10y" in fdf.columns:
+    fdf = fdf[(fdf["return_10y"].isna()) | (fdf["return_10y"] >= min_ret_10y)]
+
+if preset == "Value Dislocation":
+    if "pe_vs_hist_5y" in fdf.columns:
+        fdf = fdf[fdf["pe_vs_hist_5y"] <= -15]
+    if "roe" in fdf.columns:
+        fdf = fdf[(fdf["roe"].isna()) | (fdf["roe"] >= 14)]
+    if "debt_equity" in fdf.columns:
+        fdf = fdf[(fdf["debt_equity"].isna()) | (fdf["debt_equity"] <= 1.2)]
+elif preset == "Fallen Compounders":
+    if {"quartile_5y", "quartile_3m", "dist_52w_low_pct"}.issubset(fdf.columns):
+        fdf = fdf[(fdf["quartile_5y"] == "Q1") & (fdf["quartile_3m"].isin(["Q3", "Q4"])) & (fdf["dist_52w_low_pct"] <= 20)]
+elif preset == "Momentum Re-Acceleration":
+    if {"quartile_3y", "quartile_1m", "volume_ratio_30d"}.issubset(fdf.columns):
+        fdf = fdf[(fdf["quartile_3y"].isin(["Q1", "Q2"])) & (fdf["quartile_1m"] == "Q1") & (fdf["volume_ratio_30d"] >= 1.5)]
+elif preset == "Event-Backed Movers":
+    if {"has_recent_news", "has_recent_filing", "volume_ratio_30d", "return_1d"}.issubset(fdf.columns):
+        fdf = fdf[(fdf["has_recent_news"] | fdf["has_recent_filing"]) & (fdf["volume_ratio_30d"] >= 1.5) & (fdf["return_1d"].abs() >= 0.015)]
+elif preset == "Order Book Optional":
+    if {"ob_marketcap_ratio", "ob_revenue_ratio"}.issubset(fdf.columns):
+        fdf = fdf[(fdf["ob_marketcap_ratio"] >= 0.75) | (fdf["ob_revenue_ratio"] >= 2.0)]
+
+if pe_mode == "Below 3Y Avg" and "pe_vs_hist_3y" in fdf.columns:
+    fdf = fdf[fdf["pe_vs_hist_3y"] <= 0]
+elif pe_mode == "Below 5Y Avg" and "pe_vs_hist_5y" in fdf.columns:
+    fdf = fdf[fdf["pe_vs_hist_5y"] <= 0]
+elif pe_mode == "Below 10Y Avg" and "pe_vs_hist_10y" in fdf.columns:
+    fdf = fdf[fdf["pe_vs_hist_10y"] <= 0]
+elif pe_mode == "Above 3Y Avg" and "pe_vs_hist_3y" in fdf.columns:
+    fdf = fdf[fdf["pe_vs_hist_3y"] >= 0]
+elif pe_mode == "Above 5Y Avg" and "pe_vs_hist_5y" in fdf.columns:
+    fdf = fdf[fdf["pe_vs_hist_5y"] >= 0]
+
+if near_52 == "Near 52W Low" and "dist_52w_low_pct" in fdf.columns:
+    fdf = fdf[fdf["dist_52w_low_pct"] <= 10]
+elif near_52 == "Near 52W High" and "dist_52w_high_pct" in fdf.columns:
+    fdf = fdf[fdf["dist_52w_high_pct"] >= -10]
+
+if ob_mode == "OB/MCap > 0.75x" and "ob_marketcap_ratio" in fdf.columns:
+    fdf = fdf[fdf["ob_marketcap_ratio"] >= 0.75]
+elif ob_mode == "OB/MCap > 1.0x" and "ob_marketcap_ratio" in fdf.columns:
+    fdf = fdf[fdf["ob_marketcap_ratio"] >= 1.0]
+elif ob_mode == "OB/Revenue > 2.0x" and "ob_revenue_ratio" in fdf.columns:
+    fdf = fdf[fdf["ob_revenue_ratio"] >= 2.0]
+
+fdf = _idea_score(fdf, period_a, period_b)
+if "idea_score" in fdf.columns:
+    fdf = fdf.sort_values(["idea_score", "return_3m"], ascending=[False, False], na_position="last")
+
+html_block(
+    """
+    <div class="hero-panel">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Ideas Lab</div>
+          <div class="hero-title">Multi-Metric Scenario Builder</div>
+        </div>
+      </div>
+    </div>
+    """
+)
+
+cols = st.columns(5)
+with cols[0]:
+    kpi_card("Candidates", str(len(fdf)), "after filters")
+with cols[1]:
+    kpi_card("With P/E History", str(int(fdf.get("historical_pe_5y", pd.Series(dtype=float)).notna().sum())), "5Y baseline")
+with cols[2]:
+    kpi_card("Event-backed", str(int((fdf.get("has_recent_news", False) | fdf.get("has_recent_filing", False)).sum())), "news / filing")
+with cols[3]:
+    kpi_card("Near 52W Lows", str(int(fdf.get("near_52w_low", pd.Series(dtype=bool)).fillna(False).sum())), "<= 10%")
+with cols[4]:
+    kpi_card("OB Optional", str(int(fdf.get("ob_marketcap_ratio", pd.Series(dtype=float)).notna().sum())), "coverage")
+with st.container():
+    top_ideas = fdf.head(5) if "idea_score" in fdf.columns else pd.DataFrame()
+    if not top_ideas.empty:
+        section_label("Highest-Scoring Setups")
+        for _, row in top_ideas.iterrows():
+            info_block(
+                f"{row.get('ticker','')} · {row.get('company_name','')} · Score {row.get('idea_score','—')} "
+                f"· {row.get('idea_reason','No standout trigger')}"
             )
+
+section_label("Scenario Summary")
+summary_cols = st.columns(4)
+with summary_cols[0]:
+    q1_5y = int((fdf.get("quartile_5y", pd.Series(dtype=object)) == "Q1").sum())
+    kpi_card("5Y Q1", str(q1_5y), "durable winners")
+with summary_cols[1]:
+    cheap = int((pd.to_numeric(fdf.get("pe_vs_hist_5y"), errors="coerce") <= -20).sum()) if "pe_vs_hist_5y" in fdf.columns else 0
+    kpi_card("Cheap vs 5Y", str(cheap), "P/E below history")
+with summary_cols[2]:
+    compounders = int(((fdf.get("quartile_5y") == "Q1") & (fdf.get("quartile_3m").isin(["Q3", "Q4"]))).sum()) if {"quartile_5y", "quartile_3m"}.issubset(fdf.columns) else 0
+    kpi_card("Fallen Quality", str(compounders), "Q1 long-term, weak short-term")
+with summary_cols[3]:
+    event_count = int((fdf.get("has_recent_news", False) | fdf.get("has_recent_filing", False)).sum())
+    kpi_card("Event-Linked", str(event_count), "fresh catalyst")
+
+section_label("Quartile Crosstab")
+if qa_col in df.columns and qb_col in df.columns:
+    ctab = (
+        df.dropna(subset=[qa_col, qb_col])
+        .groupby([qa_col, qb_col]).size()
+        .unstack(fill_value=0)
+        .reindex(index=["Q1", "Q2", "Q3", "Q4"], columns=["Q1", "Q2", "Q3", "Q4"], fill_value=0)
+    )
+    st.dataframe(ctab, width="stretch")
 else:
-    info_block("Populate data/news.csv to see order win news here.")
+    info_block("Quartile crosstab will populate after the returns snapshot has quartile columns.")
+
+section_label("Transitions")
+if qa_col in df.columns and qb_col in df.columns:
+    up = fdf[(fdf[qa_col] == "Q4") & (fdf[qb_col] == "Q1")].head(5)
+    down = fdf[(fdf[qa_col] == "Q1") & (fdf[qb_col] == "Q4")].head(5)
+    c1, c2 = st.columns(2)
+    with c1:
+        info_block(
+            f"Q4 → Q1 ({period_a} vs {period_b}): " +
+            (", ".join(up["ticker"].astype(str).tolist()) if not up.empty else "None")
+        )
+    with c2:
+        info_block(
+            f"Q1 → Q4 ({period_a} vs {period_b}): " +
+            (", ".join(down["ticker"].astype(str).tolist()) if not down.empty else "None")
+        )
+
+section_label("Signal Buckets")
+signals = _signal_buckets(fdf)
+if not signals:
+    info_block("No signal buckets available under the current filters.")
+else:
+    grid_cols = st.columns(3)
+    for idx, (name, sub) in enumerate(signals.items()):
+        with grid_cols[idx % 3]:
+            top = sub.head(5)
+            summary = ", ".join(top["ticker"].astype(str).tolist()) if not top.empty else "No candidates"
+            kpi_card(name, str(len(sub)), summary)
+
+section_label("Idea Candidates")
+display_cols = [
+    "ticker", "company_name", "sector", "industry", "price",
+    "return_1m", "return_3m", "return_1y", "return_3y", "return_5y", "return_10y",
+    qa_col, qb_col, "pe", "historical_pe_5y", "pe_vs_hist_5y",
+    "roe", "roce", "debt_equity", "dist_52w_high_pct", "dist_52w_low_pct",
+    "volume_ratio_30d", "ob_marketcap_ratio", "ob_revenue_ratio", "latest_event",
+    "idea_score", "idea_reason",
+]
+display_cols = [c for c in display_cols if c in fdf.columns]
+table_df = fdf[display_cols].copy().sort_values(
+    by=[qb_col if qb_col in fdf.columns else "ticker", "return_3m" if "return_3m" in fdf.columns else "ticker"],
+    ascending=[True, False],
+    na_position="last",
+)
+table_df = table_df.rename(columns={
+    "ticker": "Ticker",
+    "company_name": "Company",
+    "sector": "Sector",
+    "industry": "Industry",
+    "price": "Price",
+    "return_1m": "1M %",
+    "return_3m": "3M %",
+    "return_1y": "1Y %",
+    "return_3y": "3Y %",
+    "return_5y": "5Y %",
+    "return_10y": "10Y %",
+    qa_col: f"Q {period_a}",
+    qb_col: f"Q {period_b}",
+    "pe": "P/E",
+    "historical_pe_5y": "Hist PE 5Y",
+    "pe_vs_hist_5y": "P/E vs 5Y %",
+    "roe": "ROE %",
+    "roce": "ROCE %",
+    "debt_equity": "D/E",
+    "dist_52w_high_pct": "52W High Dist %",
+    "dist_52w_low_pct": "52W Low Dist %",
+    "volume_ratio_30d": "Vol/30D",
+    "ob_marketcap_ratio": "OB/MCap",
+    "ob_revenue_ratio": "OB/Rev",
+    "latest_event": "Latest Event",
+    "idea_score": "Idea Score",
+    "idea_reason": "Why It Surfaced",
+})
+
+if table_df.empty:
+    warn_block("No companies match the current screen. Relax one or two filters and re-run the idea set.")
+else:
+    st.dataframe(
+        table_df,
+        hide_index=True,
+        width="stretch",
+        height=760,
+        column_config={
+            "Price": st.column_config.NumberColumn(format="₹ %.2f"),
+            "1M %": st.column_config.NumberColumn(format="%.1f%%"),
+            "3M %": st.column_config.NumberColumn(format="%.1f%%"),
+            "1Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "3Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "5Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "10Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "P/E": st.column_config.NumberColumn(format="%.1f"),
+            "Hist PE 5Y": st.column_config.NumberColumn(format="%.1f"),
+            "P/E vs 5Y %": st.column_config.NumberColumn(format="%.1f%%"),
+            "ROE %": st.column_config.NumberColumn(format="%.1f%%"),
+            "ROCE %": st.column_config.NumberColumn(format="%.1f%%"),
+            "D/E": st.column_config.NumberColumn(format="%.2f"),
+            "52W High Dist %": st.column_config.NumberColumn(format="%.1f%%"),
+            "52W Low Dist %": st.column_config.NumberColumn(format="%.1f%%"),
+            "Vol/30D": st.column_config.NumberColumn(format="%.2fx"),
+            "OB/MCap": st.column_config.NumberColumn(format="%.2fx"),
+            "OB/Rev": st.column_config.NumberColumn(format="%.2fx"),
+            "Idea Score": st.column_config.NumberColumn(format="%.1f"),
+        },
+    )
+    st.download_button(
+        "Export Idea Set CSV",
+        data=table_df.to_csv(index=False),
+        file_name="idea_lab_candidates.csv",
+        mime="text/csv",
+    )
+
+section_label("How To Use")
+info_block(
+    "Use quartiles to compare long-duration winners against short-term weakness. "
+    "Typical high-signal setups are Q1 on 5Y with Q4 on 3M, or current P/E trading below 5Y average "
+    "while ROE remains healthy. Order-book metrics are optional and only apply where source data exists."
+)

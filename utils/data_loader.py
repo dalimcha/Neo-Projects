@@ -35,6 +35,8 @@ QUARTERLY_CSV     = DATA / "quarterly_financials.csv"
 CORPORATE_ACTIONS_CSV = DATA / "corporate_actions.csv"
 DATA_QUALITY_LOG_CSV = DATA / "data_quality_log.csv"
 FAILED_TICKERS_CSV = DATA / "failed_tickers.csv"
+SECTOR_MAP_CSV = DATA / "sector_map.csv"
+RESULTS_CALENDAR_CSV = DATA / "results_calendar.csv"
 
 
 # ── Generic helpers ───────────────────────────────────────────────────────────
@@ -53,6 +55,29 @@ def _to_float(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
+def _assign_quartiles(series: pd.Series) -> pd.Series:
+    vals = pd.to_numeric(series, errors="coerce")
+    valid = vals.dropna()
+    out = pd.Series(pd.NA, index=series.index, dtype="object")
+    if len(valid) < 4:
+        return out
+    try:
+        labels = pd.qcut(valid.rank(method="first"), 4, labels=["Q4", "Q3", "Q2", "Q1"])
+        out.loc[valid.index] = labels.astype(str)
+    except Exception:
+        return out
+    return out
+
+
+@st.cache_data(ttl=86400)
+def load_sector_map() -> pd.DataFrame:
+    df = _safe_read(SECTOR_MAP_CSV)
+    if df.empty:
+        return pd.DataFrame(columns=["ticker", "sector", "sub_sector"])
+    df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    return df.drop_duplicates(subset=["ticker"]).reset_index(drop=True)
+
+
 # ── Universe ──────────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=3600)
@@ -66,6 +91,15 @@ def load_universe() -> pd.DataFrame:
     if df.empty:
         return _empty_universe()
     df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    sector_map = load_sector_map()
+    if not sector_map.empty:
+        df = df.merge(sector_map, on="ticker", how="left", suffixes=("", "_map"))
+        if "sector_map" in df.columns:
+            df["sector"] = df["sector_map"].fillna(df.get("sector"))
+            df = df.drop(columns=["sector_map"])
+        if "sub_sector" in df.columns and "industry" in df.columns:
+            df["industry"] = df["sub_sector"].fillna(df["industry"])
+            df = df.drop(columns=["sub_sector"])
     return df
 
 
@@ -170,10 +204,12 @@ def load_fundamentals() -> pd.DataFrame:
     Fundamental / valuation data (from Screener export).
     Columns: ticker, as_of_date, market_cap_cr, enterprise_value_cr,
              pe, ev_ebitda, pb, ps, roe, roce, roa,
+             industry_pe, historical_pe_3y, historical_pe_5y, historical_pe_10y,
+             avg_roe_3y, avg_roe_5y,
              debt_equity, current_ratio, interest_coverage,
              revenue_ttm, ebitda_ttm, pat_ttm,
-             revenue_growth_1y, revenue_growth_3y,
-             ebitda_margin, pat_margin, ebitda_growth_1y, pat_growth_1y,
+             revenue_growth_1y, revenue_growth_3y, revenue_growth_5y,
+             ebitda_margin, pat_margin, ebitda_growth_1y, pat_growth_1y, pat_growth_3y, pat_growth_5y,
              promoter_holding, fii_holding, dii_holding, public_holding,
              latest_result_date, result_quarter,
              cash, total_debt, working_capital_days, cfo_ttm
@@ -184,9 +220,10 @@ def load_fundamentals() -> pd.DataFrame:
     df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
     num_cols = [
         "market_cap_cr","enterprise_value_cr","pe","ev_ebitda","pb","ps",
-        "roe","roce","roa","debt_equity","current_ratio","interest_coverage",
-        "revenue_ttm","ebitda_ttm","pat_ttm","revenue_growth_1y","revenue_growth_3y",
-        "ebitda_margin","pat_margin","ebitda_growth_1y","pat_growth_1y",
+        "roe","roce","roa","industry_pe","historical_pe_3y","historical_pe_5y","historical_pe_10y",
+        "avg_roe_3y","avg_roe_5y","debt_equity","current_ratio","interest_coverage",
+        "revenue_ttm","ebitda_ttm","pat_ttm","revenue_growth_1y","revenue_growth_3y","revenue_growth_5y",
+        "ebitda_margin","pat_margin","ebitda_growth_1y","pat_growth_1y","pat_growth_3y","pat_growth_5y",
         "promoter_holding","fii_holding","dii_holding","public_holding",
         "cash","total_debt","working_capital_days","cfo_ttm",
     ]
@@ -244,6 +281,8 @@ def load_filings() -> pd.DataFrame:
             df[c] = pd.to_datetime(df[c], errors="coerce")
     if "is_material" in df.columns:
         df["is_material"] = df["is_material"].fillna(False).astype(bool)
+    if "materiality_score" in df.columns:
+        df["materiality_score"] = pd.to_numeric(df["materiality_score"], errors="coerce")
     for c in ["company_name", "type", "subject", "exchange", "source", "source_url", "ai_summary", "sentiment", "affected_metrics"]:
         if c in df.columns:
             df[c] = df[c].fillna("").astype(str).str.strip()
@@ -270,6 +309,8 @@ def load_news() -> pd.DataFrame:
         )
     if "is_material" in df.columns:
         df["is_material"] = df["is_material"].fillna(False).astype(bool)
+    if "materiality_score" in df.columns:
+        df["materiality_score"] = pd.to_numeric(df["materiality_score"], errors="coerce")
     for c in ["headline", "source", "url", "sector", "sentiment", "ai_summary", "categories", "source_type"]:
         if c in df.columns:
             df[c] = df[c].fillna("").astype(str).str.strip()
@@ -298,6 +339,19 @@ def load_data_quality_log() -> pd.DataFrame:
         if c in df.columns:
             df[c] = pd.to_datetime(df[c], errors="coerce")
     return df.sort_values("logged_at", ascending=False) if "logged_at" in df.columns else df
+
+
+@st.cache_data(ttl=300)
+def load_results_calendar() -> pd.DataFrame:
+    df = _safe_read(RESULTS_CALENDAR_CSV)
+    if df.empty:
+        return pd.DataFrame(columns=["ticker", "expected_date", "board_meeting_date", "status"])
+    if "ticker" in df.columns:
+        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+    for c in ["expected_date", "board_meeting_date"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    return df
 
 
 @st.cache_data(ttl=300)
@@ -375,6 +429,15 @@ def load_full_universe() -> pd.DataFrame:
 
     if not snapshot.empty:
         df = snapshot.copy()
+        sector_map = load_sector_map()
+        if not sector_map.empty:
+            df = df.merge(sector_map, on="ticker", how="left", suffixes=("", "_map"))
+            if "sector_map" in df.columns:
+                df["sector"] = df["sector_map"].fillna(df.get("sector"))
+                df = df.drop(columns=["sector_map"])
+            if "sub_sector" in df.columns:
+                df["industry"] = df["sub_sector"].fillna(df.get("industry"))
+                df = df.drop(columns=["sub_sector"])
         if not fund.empty:
             fund_latest = fund.sort_values("as_of_date") if "as_of_date" in fund.columns else fund
             if "as_of_date" in fund.columns:
@@ -400,6 +463,39 @@ def load_full_universe() -> pd.DataFrame:
                     })
                 )
                 df = df.merge(latest_filing, on="ticker", how="left")
+        news = load_news()
+        if not news.empty and "tickers_mentioned" in news.columns:
+            rows = []
+            for _, r in news.iterrows():
+                tickers = [x.strip().upper() for x in str(r.get("tickers_mentioned", "")).split("|") if x.strip()]
+                for t in tickers:
+                    rows.append({
+                        "ticker": t,
+                        "latest_news_date": r.get("date"),
+                        "latest_news_headline": r.get("headline"),
+                        "latest_news_sentiment": r.get("sentiment"),
+                    })
+            if rows:
+                news_latest = (
+                    pd.DataFrame(rows)
+                    .dropna(subset=["ticker"])
+                    .sort_values("latest_news_date")
+                    .groupby("ticker", as_index=False)
+                    .last()
+                )
+                df = df.merge(news_latest, on="ticker", how="left")
+        quartile_map = {
+            "return_1m": "quartile_1m",
+            "return_3m": "quartile_3m",
+            "return_6m": "quartile_6m",
+            "return_1y": "quartile_1y",
+            "return_3y": "quartile_3y",
+            "return_5y": "quartile_5y",
+            "return_10y": "quartile_10y",
+        }
+        for ret_col, quart_col in quartile_map.items():
+            if ret_col in df.columns:
+                df[quart_col] = df.groupby("sector", dropna=False)[ret_col].transform(_assign_quartiles)
         return df
 
     if uni.empty:
@@ -429,7 +525,87 @@ def load_full_universe() -> pd.DataFrame:
             fund_latest = fund_latest.groupby("ticker", as_index=False).last()
         df = df.merge(fund_latest, on="ticker", how="left")
 
+    sector_map = load_sector_map()
+    if not sector_map.empty:
+        df = df.merge(sector_map, on="ticker", how="left", suffixes=("", "_map"))
+        if "sector_map" in df.columns:
+            df["sector"] = df["sector_map"].fillna(df.get("sector"))
+            df = df.drop(columns=["sector_map"])
+        if "sub_sector" in df.columns:
+            df["industry"] = df["sub_sector"].fillna(df.get("industry"))
+            df = df.drop(columns=["sub_sector"])
+
+    quartile_map = {
+        "return_1m": "quartile_1m",
+        "return_3m": "quartile_3m",
+        "return_6m": "quartile_6m",
+        "return_1y": "quartile_1y",
+        "return_3y": "quartile_3y",
+        "return_5y": "quartile_5y",
+        "return_10y": "quartile_10y",
+    }
+    for ret_col, quart_col in quartile_map.items():
+        if ret_col in df.columns:
+            df[quart_col] = df.groupby("sector", dropna=False)[ret_col].transform(_assign_quartiles)
+
     return df
+
+
+def build_morning_brief(snapshot: pd.DataFrame, sector_df: pd.DataFrame, indices: dict, filings_df: pd.DataFrame, news_df: pd.DataFrame) -> list[str]:
+    if snapshot.empty:
+        return ["Markets      No canonical market snapshot loaded"]
+
+    ret = pd.to_numeric(snapshot.get("return_1d"), errors="coerce").dropna()
+    adv = int((ret > 0).sum())
+    dec = int((ret < 0).sum())
+    ad_ratio = f"{adv/dec:.2f}x" if dec else "N/A"
+    highs = int(snapshot.get("dist_52w_high_pct", pd.Series(dtype=float)).abs().lt(3).sum()) if "dist_52w_high_pct" in snapshot.columns else 0
+    lows = int(snapshot.get("dist_52w_low_pct", pd.Series(dtype=float)).abs().lt(3).sum()) if "dist_52w_low_pct" in snapshot.columns else 0
+
+    nifty = indices.get("nifty50", {})
+    bank = indices.get("bankNifty", {})
+    vix = indices.get("vix", {})
+    lines = [
+        f"Markets       Nifty 50 {nifty.get('change_pct', 0):+.2f}% · Bank Nifty {bank.get('change_pct', 0):+.2f}% · VIX {vix.get('value', 0):.1f} ({vix.get('change_pct', 0):+.1f}%)",
+        f"Breadth       {adv} adv / {dec} dec · A/D {ad_ratio} · {highs} at 52W highs · {lows} at lows",
+    ]
+
+    if not sector_df.empty and "avg_return_1d" in sector_df.columns:
+        s = sector_df.dropna(subset=["avg_return_1d"]).copy()
+        leaders = " · ".join([f"{r['sector']} {r['avg_return_1d']*100:+.1f}%" for _, r in s.nlargest(3, "avg_return_1d").iterrows()])
+        laggards = " · ".join([f"{r['sector']} {r['avg_return_1d']*100:+.1f}%" for _, r in s.nsmallest(3, "avg_return_1d").iterrows()])
+        lines.append(f"Leaders       {leaders}"[:110])
+        lines.append(f"Laggards      {laggards}"[:110])
+
+    movers = snapshot.copy()
+    movers["return_abs"] = pd.to_numeric(movers.get("return_1d"), errors="coerce").abs()
+    movers = movers[pd.to_numeric(movers.get("volume_ratio_30d"), errors="coerce") > 1.5]
+    movers = movers.dropna(subset=["return_abs"]).sort_values("return_abs", ascending=False).head(3)
+    if not movers.empty:
+        parts = [f"{r['ticker']} {float(r['return_1d'])*100:+.0f}% ({float(r['volume_ratio_30d']):.0f}x vol)" for _, r in movers.iterrows()]
+        lines.append(f"Movers        {' · '.join(parts)}"[:110])
+
+    catalyst_parts = []
+    event_text = {}
+    if not filings_df.empty and "ticker" in filings_df.columns and "subject" in filings_df.columns:
+        tmp = filings_df.sort_values("date", ascending=False) if "date" in filings_df.columns else filings_df
+        for _, r in tmp.iterrows():
+            t = str(r.get("ticker", "")).upper().strip()
+            if t and t not in event_text:
+                event_text[t] = str(r.get("subject", "")).strip()
+    if not news_df.empty and "tickers_mentioned" in news_df.columns and "headline" in news_df.columns:
+        tmp = news_df.sort_values("date", ascending=False) if "date" in news_df.columns else news_df
+        for _, r in tmp.iterrows():
+            for t in [x.strip().upper() for x in str(r.get("tickers_mentioned", "")).split("|") if x.strip()]:
+                if t and t not in event_text:
+                    event_text[t] = str(r.get("headline", "")).strip()
+    for _, r in movers.iterrows():
+        t = str(r.get("ticker", "")).upper()
+        if t in event_text:
+            catalyst_parts.append(f"{t} on {event_text[t][:40]}")
+    if catalyst_parts:
+        lines.append(f"Catalyst      {'; '.join(catalyst_parts)}"[:110])
+    return lines
 
 
 # ── Derived views ─────────────────────────────────────────────────────────────

@@ -52,15 +52,16 @@ NEWS_COLUMNS = [
     "sentiment",
     "ai_summary",
     "is_material",
+    "materiality_score",
     "categories",
     "ingested_at",
     "source_type",
 ]
 
 RSS_FEEDS = {
-    "Google News India Markets": "https://news.google.com/rss/search?q=Indian+stock+market+NSE+OR+BSE&hl=en-IN&gl=IN&ceid=IN:en",
-    "Google News Nifty 500": "https://news.google.com/rss/search?q=Nifty+500+stocks+India&hl=en-IN&gl=IN&ceid=IN:en",
-    "Google News Indian Earnings": "https://news.google.com/rss/search?q=India+quarterly+results+listed+companies&hl=en-IN&gl=IN&ceid=IN:en",
+    "Moneycontrol Markets": "https://www.moneycontrol.com/rss/marketreports.xml",
+    "Business Standard Markets": "https://www.business-standard.com/rss/markets-106.rss",
+    "NSE Corporate Info": "https://nsearchives.nseindia.com/corporates/corporateInfo.xml",
 }
 
 
@@ -103,7 +104,35 @@ def _is_material(headline: str) -> bool:
     return any(k in h for k in triggers)
 
 
+def _materiality_score(headline: str, sentiment: str, categories: str) -> int:
+    score = 20
+    cat_map = {
+        "results": 35,
+        "order_win": 30,
+        "rating": 28,
+        "fundraise": 24,
+        "management": 20,
+        "mna": 26,
+        "sector_move": 14,
+    }
+    for cat, pts in cat_map.items():
+        if cat in categories:
+            score = max(score, pts)
+    sentiment = str(sentiment or "").lower()
+    if sentiment == "positive":
+        score += 6
+    elif sentiment == "negative":
+        score += 8
+    if _is_material(headline):
+        score += 25
+    return max(0, min(100, score))
+
+
 def _build_company_matcher(universe: pd.DataFrame) -> list[tuple[str, str, str]]:
+    suffix_strip = re.compile(
+        r"\b(ltd|limited|industries|industry|corporation|corp|company|co|holdings|holding|services|service)\b",
+        re.I,
+    )
     rows = []
     for _, r in universe.iterrows():
         ticker = _clean_text(r.get("ticker", "")).upper()
@@ -112,7 +141,15 @@ def _build_company_matcher(universe: pd.DataFrame) -> list[tuple[str, str, str]]
         if ticker:
             rows.append((ticker, ticker, sector))
         if name:
-            rows.append((name.lower(), ticker, sector))
+            lowered = name.lower()
+            rows.append((lowered, ticker, sector))
+            stripped = _clean_text(suffix_strip.sub("", lowered))
+            if stripped and stripped != lowered and len(stripped) >= 4:
+                rows.append((stripped, ticker, sector))
+            primary = stripped.split()[0] if stripped else ""
+            if primary and len(primary) >= 5:
+                rows.append((primary, ticker, sector))
+    rows = sorted(set(rows), key=lambda x: (-len(x[0]), x[0]))
     return rows
 
 
@@ -124,7 +161,7 @@ def _map_tickers_and_sector(text: str, matcher: list[tuple[str, str, str]]) -> t
         token = needle.lower()
         if len(token) <= 2:
             continue
-        if token in hay:
+        if f" {token} " in hay or token in hay:
             tickers.append(ticker)
             if sector:
                 sectors.append(sector)
@@ -172,6 +209,8 @@ def fetch_rss_feed(source_name: str, url: str, matcher: list[tuple[str, str, str
         if not headline:
             continue
         tickers, sector = _map_tickers_and_sector(headline, matcher)
+        sentiment = _infer_sentiment(headline)
+        categories = _infer_categories(headline)
         items.append({
             "headline": headline,
             "source": source_name,
@@ -179,10 +218,11 @@ def fetch_rss_feed(source_name: str, url: str, matcher: list[tuple[str, str, str
             "url": link,
             "tickers_mentioned": tickers,
             "sector": sector,
-            "sentiment": _infer_sentiment(headline),
+            "sentiment": sentiment,
             "ai_summary": "",
             "is_material": _is_material(headline),
-            "categories": _infer_categories(headline),
+            "materiality_score": _materiality_score(headline, sentiment, categories),
+            "categories": categories,
             "ingested_at": now_ist_iso(),
             "source_type": "RSS",
         })
@@ -201,6 +241,7 @@ def import_csv(path: str) -> pd.DataFrame:
         "Sentiment": "sentiment",
         "Summary": "ai_summary",
         "Material": "is_material",
+        "Materiality Score": "materiality_score",
         "Categories": "categories",
     }
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
@@ -209,6 +250,8 @@ def import_csv(path: str) -> pd.DataFrame:
             df[col] = "" if col not in {"is_material"} else False
     df["ingested_at"] = now_ist_iso()
     df["source_type"] = "Manual CSV"
+    if "materiality_score" in df.columns:
+        df["materiality_score"] = pd.to_numeric(df["materiality_score"], errors="coerce").fillna(0)
     return df[NEWS_COLUMNS].copy()
 
 

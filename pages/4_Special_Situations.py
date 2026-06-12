@@ -1,8 +1,8 @@
 """
-Order Book Mispricing Screener
-──────────────────────────────
-Core investment module. Scores companies on a 6-factor model,
-classifies them, and shows score breakdowns with source traceability.
+Special Situations
+──────────────────
+Optional signal surface for order-book-heavy names and source-traceable
+special situations. This is no longer presented as the core product.
 """
 
 import streamlit as st
@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 
 st.set_page_config(
-    page_title="OB Screener — India Terminal",
+    page_title="Special Situations — India Terminal",
     layout="wide", initial_sidebar_state="expanded",
 )
 
@@ -69,8 +69,8 @@ with st.sidebar:
     add_new = st.checkbox("Add New Company")
 
 page_header(
-    "Order Book Mispricing Screener",
-    f"{len(df)} companies scored",
+    "Special Situations",
+    f"{len(df)} optional signal rows",
 )
 
 if df.empty:
@@ -138,7 +138,7 @@ with col_b:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Master leaderboard ────────────────────────────────────────────────────────
-section_label(f"Order Book Leaderboard — {len(fdf)} companies")
+section_label(f"Special Situations Leaderboard — {len(fdf)} companies")
 
 if not fdf.empty:
     # Render table
@@ -304,7 +304,7 @@ section_label("Scoring Model Reference")
 
 with st.expander("View scoring methodology"):
     st.markdown(
-        """**6-Factor Order Book Mispricing Score (0–100)**
+        """**6-Factor Optional Order-Book Signal Score (0–100)**
 
 | Factor | Weight | What it measures |
 |--------|--------|-----------------|
@@ -338,7 +338,7 @@ with st.expander("View scoring methodology"):
 # ── Add / Edit form ───────────────────────────────────────────────────────────
 if add_new:
     st.markdown("<br>", unsafe_allow_html=True)
-    section_label("Add New Company to Order Book Database")
+    section_label("Add New Company to Special Situations Database")
 
     warn_block(
         "IMPORTANT: Do not enter order book data without a verified source document. "

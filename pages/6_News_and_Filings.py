@@ -22,6 +22,7 @@ from utils.formatting import (
     warn_block,
     table_wrap,
     sentiment_badge,
+    html_block,
 )
 from utils.data_loader import (
     ROOT,
@@ -141,7 +142,7 @@ def _render_event_rows(df: pd.DataFrame, mode: str) -> None:
         date_val = row.get("date")
         date_str = pd.to_datetime(date_val, errors="coerce").strftime("%d %b %Y") if pd.notna(pd.to_datetime(date_val, errors="coerce")) else "N/A"
         link_html = f"<a href='{url}' target='_blank' style='color:#60a5fa;'>Open</a>" if url != "N/A" else "N/A"
-        material = "Yes" if is_material else "No"
+        material = f"{int(pd.to_numeric(row.get('materiality_score'), errors='coerce') or 0)}" if is_material else "0"
         sentiment_html = sentiment_badge(sentiment)
         summary_cell = summary if summary else "No AI summary yet."
         rows += (
@@ -167,7 +168,7 @@ def _render_event_rows(df: pd.DataFrame, mode: str) -> None:
               <th class='left'>Headline</th>
               <th class='left'>Type</th>
               <th>Sentiment</th>
-              <th>Material</th>
+              <th>Score</th>
               <th class='left'>Source</th>
               <th class='left'>Summary</th>
               <th>Date</th>
@@ -195,7 +196,7 @@ if news_status == "N/A":
     news_status, news_ts = _fallback_dataset_status(news_df)
 
 with st.sidebar:
-    st.markdown('<div class="sec-label">Refresh</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Refresh</div>')
     if st.button("Update Filings"):
         ok, output = _run_script("update_filings.py")
         if ok:
@@ -217,7 +218,7 @@ with st.sidebar:
             st.code(output or "No output captured.")
 
     st.markdown("---")
-    st.markdown('<div class="sec-label">Filters</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Filters</div>')
     ticker_opts = ["All"] + sorted(universe_df["ticker"].dropna().astype(str).str.upper().unique().tolist()) if not universe_df.empty else ["All"]
     sector_opts = ["All"] + sorted(universe_df["sector"].dropna().astype(str).unique().tolist()) if not universe_df.empty else ["All"]
     type_opts = ["All"]

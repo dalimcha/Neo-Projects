@@ -6,6 +6,8 @@ for the India Public Markets Intelligence Terminal.
 """
 
 from __future__ import annotations
+import math
+import re
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -19,31 +21,50 @@ BG4      = "#0f1533"
 BORDER   = "#2d3a5f"
 BORDER2  = "#3a4a76"
 TEXT     = "#ffffff"
-TEXT2    = "#a0aec0"
+TEXT2    = "#cbd5e1"
 TEXT3    = "#64748b"
 TEXT4    = "#4b5d82"
-ACCENT   = "#00d4ff"
-ACCENT2  = "#00ff88"
-POS      = "#00ff88"
-NEG      = "#ff3366"
-WARN     = "#ffd900"
+ACCENT   = "#3b82f6"
+ACCENT2  = "#3b82f6"
+POS      = "#22c55e"
+NEG      = "#ef4444"
+WARN     = "#f59e0b"
 PURPLE   = "#8b7cff"
-TEAL     = "#00d4ff"
+TEAL     = "#3b82f6"
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 def inject_css() -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
+def _validate_html_fragment(markup: str) -> bool:
+    checks = [("div", "div"), ("span", "span"), ("table", "table"), ("tr", "tr"), ("td", "td"), ("th", "th")]
+    for open_tag, close_tag in checks:
+        opens = len(re.findall(rf"<{open_tag}(?:\s|>)", markup))
+        closes = len(re.findall(rf"</{close_tag}>", markup))
+        if opens != closes:
+            return False
+    return True
+
+
+def html_block(markup: str) -> None:
+    if not _validate_html_fragment(markup):
+        if st.runtime.exists():
+            st.markdown("", unsafe_allow_html=True)
+            return
+        raise ValueError("Unbalanced HTML fragment passed to html_block().")
+    st.markdown(markup, unsafe_allow_html=True)
+
+
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 /* ── Reset & Base ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, [class*="css"] {
-    font-family: 'Space Mono', monospace !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 /* ── Hide Streamlit chrome ─────────────────────────────────── */
@@ -59,8 +80,8 @@ footer { display: none; }
     background:
         linear-gradient(rgba(26,35,71,0.24) 1px, transparent 1px),
         linear-gradient(90deg, rgba(26,35,71,0.24) 1px, transparent 1px),
-        radial-gradient(circle at 18% 10%, rgba(0,212,255,0.10) 0%, transparent 22%),
-        radial-gradient(circle at 82% 0%, rgba(0,255,136,0.08) 0%, transparent 22%),
+        radial-gradient(circle at 18% 10%, rgba(59,130,246,0.09) 0%, transparent 24%),
+        radial-gradient(circle at 82% 0%, rgba(37,99,235,0.06) 0%, transparent 20%),
         #0a0e27 !important;
     background-size: 100px 100px, 100px 100px, auto, auto !important;
 }
@@ -105,10 +126,10 @@ footer { display: none; }
 }
 [data-testid="stSidebarNavLink"][aria-current="page"] {
     color: #ffffff !important;
-    background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(0,255,136,0.12)) !important;
-    border-color: rgba(0,255,136,0.26) !important;
+    background: rgba(59,130,246,0.14) !important;
+    border-color: rgba(59,130,246,0.34) !important;
     font-weight: 500 !important;
-    box-shadow: 0 0 0 1px rgba(0,212,255,0.12), 0 6px 16px rgba(0,0,0,0.22) !important;
+    box-shadow: 0 0 0 1px rgba(59,130,246,0.10), 0 6px 16px rgba(0,0,0,0.22) !important;
 }
 [data-testid="stSidebarNavLink"][aria-current="page"]::before {
     content: '';
@@ -117,31 +138,27 @@ footer { display: none; }
     top: 20%;
     height: 60%;
     width: 2px;
-    background: linear-gradient(180deg, #00d4ff, #00ff88);
+    background: #3b82f6;
     border-radius: 0 2px 2px 0;
 }
 [data-testid="stSidebarNavLink"] { position: relative !important; }
 
 /* ── Typography ────────────────────────────────────────────── */
 h1 {
-    font-family: 'Syne', sans-serif !important;
-    font-size: 3rem !important; font-weight: 800 !important;
-    background: linear-gradient(135deg, #00d4ff, #00ff88);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 2rem !important; font-weight: 800 !important;
+    color: #f8fafc !important;
     letter-spacing: -0.04em !important;
-    line-height: 1.3 !important;
+    line-height: 1.15 !important;
 }
 h2 {
-    font-family: 'Syne', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 0.95rem !important; font-weight: 700 !important;
     color: #ffffff !important; text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
 }
 h3 {
-    font-family: 'Syne', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 0.78rem !important; font-weight: 700 !important;
     color: #a0aec0 !important; text-transform: uppercase !important;
     letter-spacing: 0.09em !important;
@@ -151,9 +168,9 @@ p, .stMarkdown p {
     line-height: 1.68 !important;
 }
 code {
-    font-family: 'Space Mono', monospace !important;
-    font-size: 0.8em !important; color: #00d4ff !important;
-    background: rgba(0,212,255,0.1) !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.8em !important; color: #93c5fd !important;
+    background: rgba(59,130,246,0.12) !important;
     padding: 0.1em 0.35em !important; border-radius: 3px !important;
 }
 
@@ -179,16 +196,16 @@ code {
     left: 0;
     width: 4px;
     height: 100%;
-    background: linear-gradient(180deg, #00d4ff, #00ff88);
+    background: #3b82f6;
 }
 [data-testid="stMetricLabel"] p {
-    font-family: 'Space Mono', monospace !important;
+    font-family: 'JetBrains Mono', monospace !important;
     font-size: 0.72rem !important; text-transform: uppercase !important;
     letter-spacing: 0.1em !important; color: #64748b !important;
     font-weight: 600 !important;
 }
 [data-testid="stMetricValue"] {
-    font-family: 'Syne', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 2rem !important; font-weight: 700 !important;
     color: #ffffff !important; letter-spacing: -0.03em !important;
 }
@@ -204,7 +221,7 @@ code {
     margin-bottom: 0.35rem !important;
 }
 .stTabs [data-baseweb="tab"] {
-    font-family: 'Syne', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 0.82rem !important; font-weight: 700 !important;
     color: #a0aec0 !important; text-transform: uppercase !important;
     letter-spacing: 0.09em !important;
@@ -216,29 +233,30 @@ code {
 }
 .stTabs [data-baseweb="tab"]:hover { color: #94a3b8 !important; }
 .stTabs [aria-selected="true"] {
-    color: #0a0e27 !important;
-    background: linear-gradient(135deg, #00d4ff, #00ff88) !important;
-    border: 2px solid #00ff88 !important;
-    box-shadow: 0 8px 24px rgba(0,212,255,0.22) !important;
+    color: #eff6ff !important;
+    background: rgba(59,130,246,0.18) !important;
+    border: 2px solid #3b82f6 !important;
+    box-shadow: 0 8px 24px rgba(59,130,246,0.18) !important;
 }
 .stTabs [data-baseweb="tab-panel"] { padding-top: 1.25rem !important; }
 
 /* ── Buttons ───────────────────────────────────────────────── */
 .stButton > button {
-    background: linear-gradient(135deg, #00d4ff, #00ff88) !important;
-    border: none !important;
-    color: #0a0e27 !important;
-    font-family: 'Syne', sans-serif !important;
+    background: rgba(59,130,246,0.16) !important;
+    border: 1px solid rgba(59,130,246,0.42) !important;
+    color: #dbeafe !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 0.78rem !important; font-weight: 700 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important; border-radius: 8px !important;
     padding: 0.4rem 0.9rem !important;
     transition: all 0.15s !important;
-    box-shadow: 0 8px 22px rgba(0,212,255,0.18) !important;
+    box-shadow: 0 8px 22px rgba(59,130,246,0.16) !important;
 }
 .stButton > button:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 10px 26px rgba(0,212,255,0.30) !important;
+    background: rgba(59,130,246,0.24) !important;
+    box-shadow: 0 10px 26px rgba(59,130,246,0.24) !important;
 }
 .stButton > button:active {
     transform: translateY(0) !important;
@@ -288,7 +306,7 @@ code {
     background: linear-gradient(180deg, rgba(12,19,32,0.98) 0%, rgba(15,25,41,0.98) 100%) !important;
     border: 1px solid #1f314c !important;
     color: #cbd5e1 !important; font-size: 0.81rem !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     border-radius: 5px !important; line-height: 1.65 !important;
     transition: border-color 0.15s, box-shadow 0.15s !important;
 }
@@ -316,7 +334,7 @@ code {
 [data-testid="stDataFrame"] [role="columnheader"] {
     background: #1a2347 !important;
     color: #a0aec0 !important;
-    font-family: 'Syne', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 0.72rem !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
@@ -326,7 +344,7 @@ code {
     font-size: 0.84rem !important;
     color: #ffffff !important;
     border-bottom: 1px solid #2d3a5f !important;
-    font-family: 'Space Mono', monospace !important;
+    font-family: 'JetBrains Mono', monospace !important;
 }
 [data-testid="stDataFrame"] [data-testid="stDataFrameRow"]:hover [role="gridcell"] {
     background: #1a2347 !important;
@@ -378,9 +396,9 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
 /* ── Page header ───────────────────────────────────────────── */
 .pg-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0.1rem 0 1rem 0;
+    padding: 0 0 0.55rem 0;
     border-bottom: 1px solid #162338;
-    margin-bottom: 1.3rem;
+    margin-bottom: 0.85rem;
     position: relative;
 }
 .pg-header::after {
@@ -392,17 +410,14 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
     border-radius: 2px;
 }
 .pg-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 2.4rem; font-weight: 800;
-    background: linear-gradient(135deg, #00d4ff, #00ff88);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent;
-    letter-spacing: -0.04em;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem; font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
 }
 .pg-subtitle {
-    font-size: 0.76rem; color: #6f8aac; margin-left: 0.85rem;
+    font-size: 0.72rem; color: #64748b; margin-top: 0.22rem;
 }
 .pg-ts {
     font-family: 'JetBrains Mono', monospace; font-size: 0.67rem;
@@ -413,9 +428,9 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
 .sec-label {
     display: flex; align-items: center; gap: 8px;
     font-size: 0.61rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.11em; color: #3d5270;
-    margin-bottom: 0.65rem; padding-bottom: 0.35rem;
-    border-bottom: 1px solid #0f1929;
+    letter-spacing: 0.11em; color: #64748b;
+    margin-bottom: 0.55rem; padding-bottom: 0.25rem;
+    border-bottom: 1px solid #162338;
 }
 .sec-label::before {
     content: '';
@@ -444,12 +459,12 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
     color: #64748b; font-weight: 700; margin-bottom: 0.4rem;
 }
 .kpi-val {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.8rem; font-weight: 700; color: #ffffff;
     letter-spacing: -0.025em; line-height: 1.1;
 }
 .kpi-sub {
-    font-family: 'Space Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.71rem; margin-top: 0.2rem;
 }
 
@@ -475,7 +490,7 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
     color: #64748b; font-weight: 700;
 }
 .idx-val {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.65rem; font-weight: 700; color: #ffffff;
     letter-spacing: -0.03em; line-height: 1.15;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -501,14 +516,14 @@ hr { border: none !important; border-top: 1px solid #141e30 !important; margin: 
 }
 table.trm {
     width: 100%; border-collapse: collapse;
-    font-size: 0.84rem; font-family: 'Space Mono', monospace;
+    font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;
 }
 table.trm th {
     font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em;
     color: #a0aec0; font-weight: 700; padding: 0.75rem 0.95rem;
     border-bottom: 2px solid #2d3a5f; white-space: nowrap;
     text-align: right; background: #1a2347;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     position: sticky; top: 0; z-index: 1;
 }
 table.trm th.left { text-align: left; }
@@ -518,22 +533,22 @@ table.trm td {
     transition: background 0.08s, color 0.08s;
 }
 table.trm td.left {
-    text-align: left; font-family: 'Space Mono', monospace; color: #ffffff;
+    text-align: left; font-family: 'JetBrains Mono', monospace; color: #ffffff;
 }
 table.trm td.ticker {
-    color: #00d4ff; font-weight: 700; text-align: left;
+    color: #60a5fa; font-weight: 800; text-align: left;
     letter-spacing: 0.02em;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     text-transform: uppercase;
-    font-size: 1rem;
+    font-size: 0.92rem;
 }
 table.trm td.name {
     color: #a0aec0; text-align: left; font-size: 0.88rem;
-    font-family: 'Space Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     max-width: 180px; overflow: hidden; text-overflow: ellipsis;
 }
 table.trm tr:hover td { background: #1a2347 !important; color: #ffffff !important; }
-table.trm tr:hover td.ticker { color: #00d4ff; }
+table.trm tr:hover td.ticker { color: #93c5fd; }
 table.trm tr:last-child td { border-bottom: none; }
 
 /* ── Colour helpers ────────────────────────────────────────── */
@@ -560,8 +575,8 @@ table.trm tr:last-child td { border-bottom: none; }
 .bdg-mbe { background: #2e1065; color: #c084fc; border: 1px solid #6b21a8; }
 .bdg-vt  { background: #1c1917; color: #78716c; border: 1px solid #44403c; }
 .bdg-av  { background: #450a0a; color: #f87171; border: 1px solid #991b1b; }
-.bdg-pos { background: rgba(0,255,136,0.15); color: #00ff88; border: 1px solid #00ff88; }
-.bdg-neg { background: rgba(255,51,102,0.15); color: #ff3366; border: 1px solid #ff3366; }
+.bdg-pos { background: rgba(34,197,94,0.14); color: #4ade80; border: 1px solid #166534; }
+.bdg-neg { background: rgba(239,68,68,0.14); color: #f87171; border: 1px solid #991b1b; }
 .bdg-neu { background: #1c1917; color: #78716c; border: 1px solid #44403c; }
 
 /* ── Idea card ─────────────────────────────────────────────── */
@@ -709,7 +724,7 @@ table.trm tr:last-child td { border-bottom: none; }
 .status-dot {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 0.62rem; color: #3d5270;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 .status-dot::before {
     content: '';
@@ -729,7 +744,7 @@ table.trm tr:last-child td { border-bottom: none; }
     padding: 0 0 1.5rem 0; margin-bottom: 0.5rem;
 }
 .term-title {
-    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.4rem; font-weight: 700; color: #f8fbff;
     letter-spacing: -0.025em; line-height: 1.2;
 }
@@ -761,14 +776,14 @@ table.trm tr:last-child td { border-bottom: none; }
     box-shadow: 0 6px 20px rgba(0,0,0,0.55), 0 0 32px rgba(37,99,235,0.1), inset 0 1px 0 rgba(59,130,246,0.08);
 }
 .mod-num {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.63rem; font-weight: 600; color: #1e3a5f;
     letter-spacing: 0.08em; margin-bottom: 0.45rem;
     display: flex; align-items: center; gap: 8px;
 }
 .mod-num.primary { color: #2563eb; }
 .mod-name { font-size: 0.91rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem; letter-spacing: -0.01em; }
-.mod-name { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+.mod-name { font-family: 'Inter', sans-serif; }
 .mod-name.primary { color: #93c5fd; }
 .mod-desc { font-size: 0.77rem; color: #3d5270; line-height: 1.65; margin-bottom: 0.65rem; }
 .mod-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -777,7 +792,7 @@ table.trm tr:last-child td { border-bottom: none; }
     padding: 0.15rem 0.5rem; border-radius: 4px;
     font-size: 0.59rem; font-weight: 600; color: #2d3f5a;
     letter-spacing: 0.04em; text-transform: uppercase;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 .mod-card.primary .mod-tag {
     background: rgba(30,58,107,0.4); border-color: #1e3a6b; color: #2563eb;
@@ -807,7 +822,7 @@ table.trm tr:last-child td { border-bottom: none; }
     margin-bottom: 0.95rem;
 }
 .surface-title {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.11em;
@@ -839,7 +854,7 @@ table.trm tr:last-child td { border-bottom: none; }
     margin-bottom: 0.35rem;
 }
 .mini-stat-v {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.25rem;
     color: #ffffff;
     font-weight: 700;
@@ -871,26 +886,26 @@ table.trm tr:last-child td { border-bottom: none; }
 }
 .pill-chip strong {
     color:#ffffff;
-    font-family:'Syne', sans-serif;
+    font-family:'Inter', sans-serif;
     font-size:0.82rem;
 }
 .ticker-glow {
-    font-family:'Syne', sans-serif;
+    font-family:'Inter', sans-serif;
     font-weight:700;
     letter-spacing:0.03em;
-    color:#00d4ff;
+    color:#60a5fa;
     text-transform:uppercase;
-    text-shadow:0 0 18px rgba(103,216,255,0.16);
+    text-shadow:0 0 18px rgba(96,165,250,0.16);
 }
 .hero-panel {
     background:
-      linear-gradient(135deg, rgba(20,27,61,0.98) 0%, rgba(16,22,52,0.98) 68%),
-      radial-gradient(circle at top right, rgba(0,255,136,0.08) 0%, transparent 28%);
+      linear-gradient(180deg, rgba(20,27,61,0.98) 0%, rgba(17,23,53,0.98) 100%),
+      radial-gradient(circle at top right, rgba(59,130,246,0.06) 0%, transparent 32%);
     border:1px solid #2d3a5f;
     border-radius:16px;
-    padding:1.15rem 1.2rem;
-    box-shadow:0 18px 40px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.03);
-    margin-bottom:1rem;
+    padding:0.95rem 1.05rem;
+    box-shadow:0 14px 34px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.03);
+    margin-bottom:0.9rem;
     position:relative;
     overflow:hidden;
 }
@@ -900,24 +915,20 @@ table.trm tr:last-child td { border-bottom: none; }
     inset:0 auto auto 0;
     width:100%;
     height:1px;
-    background:linear-gradient(90deg, rgba(0,212,255,0), rgba(0,212,255,0.65), rgba(0,255,136,0.55), rgba(0,212,255,0));
+    background:linear-gradient(90deg, rgba(59,130,246,0), rgba(59,130,246,0.75), rgba(59,130,246,0));
 }
 .hero-title {
-    font-family:'Syne', sans-serif;
-    font-size:2.1rem;
+    font-family:'Inter', sans-serif;
+    font-size:1.05rem;
     font-weight:800;
-    background: linear-gradient(135deg, #00d4ff, #00ff88);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent;
-    letter-spacing:-0.04em;
-    margin-bottom:0.28rem;
+    color:#f8fafc;
+    letter-spacing:-0.02em;
+    margin-bottom:0.18rem;
 }
 .hero-sub {
     color:#a0aec0;
-    font-size:0.96rem;
-    line-height:1.65;
+    font-size:0.82rem;
+    line-height:1.55;
 }
 </style>
 """
@@ -925,15 +936,24 @@ table.trm tr:last-child td { border-bottom: none; }
 
 # ── Number formatters ─────────────────────────────────────────────────────────
 
-def fmt_cr(val, decimals: int = 0, na: str = "—") -> str:
-    """Format value in crores: 1,23,456 Cr"""
+def fmt_cr_compact(val, na: str = "—") -> str:
     try:
         v = float(val)
-        if v >= 1_00_000:
-            return f"{v/1_00_000:,.1f}L Cr"
-        return f"{v:,.{decimals}f} Cr"
+        if math.isnan(v) or math.isinf(v):
+            return na
+        sign = "-" if v < 0 else ""
+        v = abs(v)
+        if v < 100:
+            return f"{sign}₹{v:.0f} Cr"
+        if v < 100000:
+            return f"{sign}₹{v:,.0f} Cr"
+        return f"{sign}₹{v/100000:.2f} L Cr"
     except (TypeError, ValueError):
         return na
+
+
+def fmt_cr(val, decimals: int = 0, na: str = "—") -> str:
+    return fmt_cr_compact(val, na=na)
 
 
 def fmt_lakh_cr(val, na: str = "—") -> str:
@@ -947,6 +967,8 @@ def fmt_lakh_cr(val, na: str = "—") -> str:
 def fmt_pct(val, decimals: int = 1, na: str = "—", sign: bool = True) -> str:
     try:
         v = float(val)
+        if math.isnan(v) or math.isinf(v):
+            return na
         s = "+" if (sign and v > 0) else ""
         return f"{s}{v:.{decimals}f}%"
     except (TypeError, ValueError):
@@ -956,6 +978,8 @@ def fmt_pct(val, decimals: int = 1, na: str = "—", sign: bool = True) -> str:
 def fmt_price(val, na: str = "—") -> str:
     try:
         v = float(val)
+        if math.isnan(v) or math.isinf(v):
+            return na
         if v >= 10_000:
             return f"₹{v:,.0f}"
         return f"₹{v:,.2f}"
@@ -966,6 +990,8 @@ def fmt_price(val, na: str = "—") -> str:
 def fmt_ratio(val, decimals: int = 1, na: str = "—") -> str:
     try:
         v = float(val)
+        if math.isnan(v) or math.isinf(v):
+            return na
         return f"{v:.{decimals}f}x"
     except (TypeError, ValueError):
         return na
@@ -974,6 +1000,8 @@ def fmt_ratio(val, decimals: int = 1, na: str = "—") -> str:
 def fmt_vol(val, na: str = "—") -> str:
     try:
         v = float(val)
+        if math.isnan(v) or math.isinf(v):
+            return na
         if v >= 1e7:
             return f"{v/1e7:.1f}Cr"
         if v >= 1e5:
@@ -984,15 +1012,7 @@ def fmt_vol(val, na: str = "—") -> str:
 
 
 def fmt_mcap(val, na: str = "—") -> str:
-    try:
-        v = float(val)
-        if v >= 1_00_000:
-            return f"₹{v/1_00_000:.1f}L Cr"
-        if v >= 1_000:
-            return f"₹{v:,.0f} Cr"
-        return f"₹{v:.0f} Cr"
-    except (TypeError, ValueError):
-        return na
+    return fmt_cr_compact(val, na=na)
 
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
@@ -1065,85 +1085,43 @@ def page_header(
     ts: bool = True,
     data_status: str | None = None,
     data_ts: str | None = None,
+    stamp_text: str | None = None,
+    paused_message: str | None = None,
 ) -> None:
-    """
-    Render the page header.
-
-    `data_status` may be "Fresh" | "Delayed" | "Stale" | "Failed" | None.
-    When None (default), no status dot is shown — never lie about freshness.
-    `data_ts` is the data-as-of timestamp (distinct from page render time).
-    """
-    now_str = datetime.now().strftime("%d %b %Y  %H:%M") if ts else ""
-    title_safe = title
-    sub_html = f'<span class="hero-sub" style="margin:0;">{subtitle}</span>' if subtitle else ""
-
-    dot_html = ""
-    if data_status:
-        colour = {
-            "Fresh":   "#22c55e",
-            "Delayed": "#f59e0b",
-            "Stale":   "#ef4444",
-            "Failed":  "#ef4444",
-        }.get(data_status, "#64748b")
-        dot_html = (
-            f'<span class="pill-chip" style="border-color:{colour}55;color:{colour};'
-            f'background:rgba(9,15,28,0.88);">'
-            f'<span style="width:7px;height:7px;border-radius:50%;background:{colour};'
-            f'box-shadow:0 0 10px {colour}aa;display:inline-block;"></span>'
-            f'Data {data_status}</span>'
-        )
-
-    data_ts_html = (
-        f'<span class="pill-chip"><strong>Data</strong>{data_ts}</span>'
-        if data_ts else ""
+    title_html = (
+        f"<div style=\"font-family:'Inter',sans-serif;font-size:0.98rem;font-weight:800;color:{TEXT};\">{title}</div>"
+        if title else ""
     )
-    page_ts_html = (
-        f'<span class="pill-chip"><strong>Rendered</strong>{now_str}</span>'
+    subtitle_html = (
+        f"<div style=\"font-size:0.74rem;color:{TEXT3};margin-top:0.18rem;\">{subtitle}</div>"
+        if subtitle else ""
     )
-
-    left, right = st.columns([1.7, 1.0])
-    with left:
-        st.markdown(
-            f"""<div class="hero-panel" style="padding:1.15rem 1.2rem 0.95rem;">
-                  <div style="display:flex;align-items:flex-end;gap:0.55rem;flex-wrap:wrap;">
-                    <span style="
-                        font-family:'Syne',sans-serif;
-                        font-size:clamp(2.1rem, 3.7vw, 3.8rem);
-                        font-weight:800;
-                        line-height:0.98;
-                        letter-spacing:-0.055em;
-                        text-transform:none;
-                        background:linear-gradient(135deg,#00d4ff 0%,#6be8ff 30%,#00ff88 100%);
-                        -webkit-background-clip:text;
-                        -webkit-text-fill-color:transparent;
-                        background-clip:text;
-                        color:transparent;
-                        display:inline-block;
-                        text-shadow:0 0 30px rgba(0,212,255,0.12);
-                    ">{title_safe}</span>
-                    {sub_html}
-                  </div>
-                  <div style="display:flex;gap:0.55rem;flex-wrap:wrap;margin-top:0.9rem;">
-                    <span class="pill-chip"><strong>Terminal</strong>India Public Markets</span>
-                    <span class="pill-chip"><strong>Mode</strong>Research</span>
-                    <span class="pill-chip"><strong>Surface</strong>{title_safe}</span>
-                  </div>
-                </div>""",
-            unsafe_allow_html=True,
-        )
-    with right:
-        right_html = "".join([x for x in [dot_html, data_ts_html, page_ts_html] if x])
-        st.markdown(
-            f"""<div class="hero-panel" style="padding:1rem 1rem 0.95rem;text-align:right;min-height:100%;">
-                  <div class="hero-sub" style="margin:0 0 0.5rem 0;">Operational Status</div>
-                  {right_html}
-                </div>""",
-            unsafe_allow_html=True,
-        )
+    if stamp_text:
+        stamp = stamp_text
+    elif data_ts:
+        stamp = f"Updated {data_ts}"
+    else:
+        stamp = datetime.now().strftime("%d %b %H:%M") if ts else ""
+    color = {
+        "Fresh": POS,
+        "Delayed": WARN,
+        "Stale": WARN,
+        "Failed": NEG,
+    }.get(data_status or "", TEXT3)
+    html_block(
+        f"""<div class="pg-header">
+              <div>{title_html or ''}{subtitle_html or ''}</div>
+              <div style="text-align:right;">
+                <div class="pg-ts" style="color:{color};">{stamp}</div>
+              </div>
+            </div>"""
+    )
+    if paused_message:
+        warn_block(paused_message)
 
 
 def section_label(text: str) -> None:
-    st.markdown(f'<div class="sec-label">{text}</div>', unsafe_allow_html=True)
+    html_block(f'<div class="sec-label">{text}</div>')
 
 
 def kpi_card(label: str, value: str, delta: str = "", delta_pos: bool | None = None) -> None:
@@ -1152,13 +1130,12 @@ def kpi_card(label: str, value: str, delta: str = "", delta_pos: bool | None = N
         delta_html = f'<div class="kpi-sub {cls}">{delta}</div>'
     else:
         delta_html = ""
-    st.markdown(
+    html_block(
         f"""<div class="kpi">
               <div class="kpi-lbl">{label}</div>
               <div class="kpi-val">{value}</div>
               {delta_html}
-            </div>""",
-        unsafe_allow_html=True,
+            </div>"""
     )
 
 
@@ -1187,53 +1164,47 @@ def index_card(
         dir_cls = ""
     else:
         val_html = f'<div class="idx-val">{value}</div>'
-        chg_html = (
-            f'<div class="idx-chg {cls}">'
-            f'<span>{change}</span>'
-            f'&nbsp;<span style="color:#3d5270;">{pts}</span>'
-            f'</div>'
-        )
+        pts_html = f'&nbsp;<span style="color:{TEXT3};">{pts}</span>' if pts else ""
+        chg_html = f'<div class="idx-chg {cls}"><span>{change}</span>{pts_html}</div>'
 
     src_html = ""
     if source or data_ts:
         src_html = (
             f'<div style="font-size:0.58rem;color:#2d3f5a;margin-top:0.3rem;'
-            f'font-family:\'IBM Plex Mono\',monospace;letter-spacing:0.02em;'
+            f'font-family:\'JetBrains Mono\',monospace;letter-spacing:0.02em;'
             f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
             f'{source}{" · " if source and data_ts else ""}{data_ts}'
             f'</div>'
         )
 
-    st.markdown(
+    html_block(
         f"""<div class="idx-bar {dir_cls}">
               <div class="idx-name">{name}</div>
               {val_html}
               {chg_html}
               {src_html}
-            </div>""",
-        unsafe_allow_html=True,
+            </div>"""
     )
 
 
 def info_block(text: str) -> None:
-    st.markdown(f'<div class="info-blk">{text}</div>', unsafe_allow_html=True)
+    html_block(f'<div class="info-blk">{text}</div>')
 
 
 def warn_block(text: str) -> None:
-    st.markdown(f'<div class="warn-blk">{text}</div>', unsafe_allow_html=True)
+    html_block(f'<div class="warn-blk">{text}</div>')
 
 
 def ok_block(text: str) -> None:
-    st.markdown(f'<div class="ok-blk">{text}</div>', unsafe_allow_html=True)
+    html_block(f'<div class="ok-blk">{text}</div>')
 
 
 def ai_box(text: str, label: str = "AI Analysis") -> None:
-    st.markdown(
+    html_block(
         f"""<div class="ai-box">
               <div class="ai-lbl">{label}</div>
               <div class="ai-txt">{text}</div>
-            </div>""",
-        unsafe_allow_html=True,
+            </div>"""
     )
 
 
@@ -1242,10 +1213,9 @@ def table_wrap(rows_html: str, caption: str = "", caption_right: str = "") -> No
         f'<div class="tbl-cap"><span>{caption}</span><span style="color:#2d3f5a;">{caption_right}</span></div>'
         if caption else ""
     )
-    st.markdown(
+    html_block(
         f'<div class="tbl-wrap">{cap_html}'
-        f'<div style="overflow-x:auto;">{rows_html}</div></div>',
-        unsafe_allow_html=True,
+        f'<div style="overflow-x:auto;">{rows_html}</div></div>'
     )
 
 
@@ -1267,7 +1237,7 @@ def score_bar(score: float, width: int = 120) -> str:
         f'<div class="score-bar-fill" style="width:{pct}%;background:{grad};'
         f'box-shadow:0 0 6px {glow};"></div>'
         f'</div>'
-        f'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.73rem;'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:0.73rem;'
         f'font-weight:600;color:{col};min-width:2.2rem;text-align:right;">'
         f'{score:.0f}</span></div>'
     )
@@ -1301,7 +1271,7 @@ def base_table_style(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
             "color": "#64748b",
             "border-color": "#141e30",
             "font-size": "0.76rem",
-            "font-family": "'IBM Plex Mono', monospace",
+            "font-family": "'JetBrains Mono', monospace",
             "padding": "0.42rem 0.8rem",
         })
         .set_table_styles([
@@ -1311,7 +1281,7 @@ def base_table_style(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
                 ("font-size", "0.59rem"),
                 ("text-transform", "uppercase"),
                 ("letter-spacing", "0.09em"),
-                ("font-family", "'IBM Plex Sans', sans-serif"),
+                ("font-family", "'Inter', sans-serif"),
                 ("font-weight", "700"),
                 ("border-bottom", "1px solid #141e30"),
                 ("padding", "0.5rem 0.8rem"),

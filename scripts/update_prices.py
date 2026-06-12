@@ -60,6 +60,20 @@ MIN_VALID_ROWS = 475
 BATCH_SIZE = 80
 
 
+def _assign_quartiles(series: pd.Series) -> pd.Series:
+    vals = pd.to_numeric(series, errors="coerce")
+    valid = vals.dropna()
+    out = pd.Series(pd.NA, index=series.index, dtype="object")
+    if len(valid) < 4:
+        return out
+    try:
+        labels = pd.qcut(valid.rank(method="first"), 4, labels=["Q4", "Q3", "Q2", "Q1"])
+        out.loc[valid.index] = labels.astype(str)
+    except Exception:
+        return out
+    return out
+
+
 def load_universe() -> pd.DataFrame:
     df = read_csv_safe(UNIVERSE_CSV)
     if df.empty:
@@ -125,8 +139,14 @@ def fetch_yfinance_history(tickers: list[str], run_id: str, period: str = "10y")
                     if sym not in raw.columns.get_level_values(0):
                         raise KeyError(f"No data for {ticker}")
                     item = raw[sym].copy()
+                if item.empty:
+                    raise ValueError(f"Empty yfinance frame for {ticker}")
                 item = item.reset_index()
                 item.columns = [str(c).lower().replace(" ", "_") for c in item.columns]
+                if "index" in item.columns and "date" not in item.columns:
+                    item = item.rename(columns={"index": "date"})
+                if "date" not in item.columns:
+                    raise KeyError(f"No date column for {ticker}")
                 item["ticker"] = ticker
                 item = item.rename(columns={"adj_close": "adj_close"})
                 frames.append(item)
@@ -271,6 +291,19 @@ def build_returns_snapshot(universe: pd.DataFrame, prices: pd.DataFrame, fundame
     else:
         merged["price_source"] = pd.NA
     merged["updated_at"] = now_ist_iso()
+
+    quartile_map = {
+        "return_1m": "quartile_1m",
+        "return_3m": "quartile_3m",
+        "return_6m": "quartile_6m",
+        "return_1y": "quartile_1y",
+        "return_3y": "quartile_3y",
+        "return_5y": "quartile_5y",
+        "return_10y": "quartile_10y",
+    }
+    for ret_col, quart_col in quartile_map.items():
+        if ret_col in merged.columns:
+            merged[quart_col] = merged.groupby("sector", dropna=False)[ret_col].transform(_assign_quartiles)
 
     for col in RETURNS_SNAPSHOT_COLUMNS:
         if col not in merged.columns:

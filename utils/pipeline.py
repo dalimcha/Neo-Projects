@@ -50,6 +50,7 @@ RETURNS_SNAPSHOT_COLUMNS = [
     "price", "prev_close", "volume", "avg_volume_30d", "volume_ratio_30d",
     "return_1d", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
     "return_3y", "return_5y", "return_10y",
+    "quartile_1m", "quartile_3m", "quartile_6m", "quartile_1y", "quartile_3y", "quartile_5y", "quartile_10y",
     "high_52w", "low_52w", "dist_52w_high_pct", "dist_52w_low_pct",
     "market_cap_cr", "date", "price_source", "price_timestamp",
     "fundamentals_source", "fundamentals_as_of", "updated_at",
@@ -77,12 +78,12 @@ CORPORATE_ACTIONS_COLUMNS = [
 FILINGS_COLUMNS = [
     "ticker", "company_name", "date", "time", "type", "subject",
     "exchange", "source", "source_url", "ai_summary", "sentiment",
-    "is_material", "affected_metrics", "ingested_at",
+    "is_material", "materiality_score", "affected_metrics", "ingested_at",
 ]
 
 NEWS_COLUMNS = [
     "headline", "source", "date", "url", "tickers_mentioned", "sector",
-    "sentiment", "ai_summary", "is_material", "categories", "ingested_at",
+    "sentiment", "ai_summary", "is_material", "materiality_score", "categories", "ingested_at",
     "source_type",
 ]
 
