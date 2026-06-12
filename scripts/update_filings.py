@@ -142,11 +142,12 @@ def run(days: int = 3, category: str = "equities") -> int:
             expected_rows=0,
             loaded_rows=len(existing),
             source="NSE Corporate Announcements",
-            last_refresh_at=None,
+            last_refresh_at=now_ist_iso() if not existing.empty else None,
             details="No live filings fetched; retained existing file.",
+            status_override="cached" if not existing.empty else "failed",
         )
         logger.warning("No live filings fetched. Existing file retained.")
-        return 1
+        return 0
 
     norm_live = _normalize_filings(live, universe)
     norm_existing = _normalize_filings(existing, universe) if not existing.empty else pd.DataFrame(columns=FILINGS_COLUMNS)
@@ -164,6 +165,7 @@ def run(days: int = 3, category: str = "equities") -> int:
         source="NSE Corporate Announcements",
         last_refresh_at=now_ist_iso(),
         details=f"Stored filings rows: {len(combined)}",
+        status_override="fresh",
     )
     logger.info("Filings update complete: %d rows written to %s", len(combined), FILINGS_CSV)
     return 0

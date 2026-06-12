@@ -218,9 +218,10 @@ def log_quality(
     source: str = "",
     last_refresh_at: Optional[str] = None,
     details: str = "",
+    status_override: Optional[str] = None,
 ) -> QualitySnapshot:
     completeness_pct = round((loaded_rows / expected_rows) * 100, 2) if expected_rows else 0.0
-    status = "fresh" if loaded_rows >= expected_rows * 0.95 else "failed"
+    status = status_override or ("fresh" if loaded_rows >= expected_rows * 0.95 else "failed")
     snap = QualitySnapshot(
         run_id=run_id,
         dataset=dataset,

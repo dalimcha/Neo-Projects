@@ -78,6 +78,16 @@ def _fallback_dataset_status(df: pd.DataFrame) -> tuple[str, str]:
     return status, ts.strftime("%d %b %Y %H:%M")
 
 
+def _effective_event_status(log_status: str, log_ts: str, df: pd.DataFrame) -> tuple[str, str]:
+    dataset_status, dataset_ts = _fallback_dataset_status(df)
+    if log_status == "N/A":
+        return dataset_status, dataset_ts
+    severity = {"Fresh": 0, "Cached": 1, "Delayed": 2, "Stale": 3, "Failed": 4, "N/A": 5}
+    chosen_status = dataset_status if severity.get(dataset_status, 5) > severity.get(log_status, 5) else log_status
+    chosen_ts = dataset_ts if dataset_ts != "N/A" else log_ts
+    return chosen_status, chosen_ts
+
+
 def _safe_text(value: object, fallback: str = "N/A") -> str:
     text = str(value or "").strip()
     return text if text else fallback
@@ -210,10 +220,8 @@ failed_df = load_failed_tickers()
 
 filings_status, filings_ts = _last_refresh(quality_log_df, "filings")
 news_status, news_ts = _last_refresh(quality_log_df, "news")
-if filings_status == "N/A":
-    filings_status, filings_ts = _fallback_dataset_status(filings_df)
-if news_status == "N/A":
-    news_status, news_ts = _fallback_dataset_status(news_df)
+filings_status, filings_ts = _effective_event_status(filings_status, filings_ts, filings_df)
+news_status, news_ts = _effective_event_status(news_status, news_ts, news_df)
 
 with st.sidebar:
     html_block('<div class="sec-label">Refresh</div>')

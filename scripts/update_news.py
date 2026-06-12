@@ -60,8 +60,9 @@ NEWS_COLUMNS = [
 
 RSS_FEEDS = {
     "Moneycontrol Markets": "https://www.moneycontrol.com/rss/marketreports.xml",
-    "Business Standard Markets": "https://www.business-standard.com/rss/markets-106.rss",
-    "NSE Corporate Info": "https://nsearchives.nseindia.com/corporates/corporateInfo.xml",
+    "Google News India Markets": "https://news.google.com/rss/search?q=India+stock+market+OR+Nifty+OR+Sensex&hl=en-IN&gl=IN&ceid=IN:en",
+    "Google News India Earnings": "https://news.google.com/rss/search?q=India+earnings+results+listed+companies&hl=en-IN&gl=IN&ceid=IN:en",
+    "Google News Capital Markets": "https://news.google.com/rss/search?q=India+capital+markets+stocks+companies&hl=en-IN&gl=IN&ceid=IN:en",
 }
 
 
@@ -208,6 +209,8 @@ def fetch_rss_feed(source_name: str, url: str, matcher: list[tuple[str, str, str
         pub_date = _clean_text(item.findtext("pubDate", ""))
         if not headline:
             continue
+        if source_name.startswith("Google News") and " - " in headline:
+            headline = headline.rsplit(" - ", 1)[0].strip()
         tickers, sector = _map_tickers_and_sector(headline, matcher)
         sentiment = _infer_sentiment(headline)
         categories = _infer_categories(headline)
@@ -281,10 +284,11 @@ def run(import_csv_path: str | None = None) -> int:
                 expected_rows=0,
                 loaded_rows=len(existing),
                 source="RSS/manual",
-                last_refresh_at=None,
+                last_refresh_at=now_ist_iso() if not existing.empty else None,
                 details="No RSS items fetched; retained existing file.",
+                status_override="cached" if not existing.empty else "failed",
             )
-            return 1
+            return 0
         combined = pd.concat(frames + [existing], ignore_index=True)
 
     combined["headline"] = combined["headline"].map(_clean_text)
@@ -295,6 +299,21 @@ def run(import_csv_path: str | None = None) -> int:
     combined = combined.drop_duplicates(subset=["headline", "source", "date"], keep="first")
     combined = combined.sort_values("date", ascending=False).reset_index(drop=True)
 
+    latest_article = pd.to_datetime(combined["date"], errors="coerce").max() if not combined.empty else pd.NaT
+    status = "fresh"
+    details = f"News rows stored: {len(combined)}"
+    if pd.notna(latest_article):
+        age_days = (pd.Timestamp.now() - latest_article).days
+        if age_days > 30:
+            status = "stale"
+            details += f"; latest article date is stale ({latest_article.date()})"
+        elif age_days > 7:
+            status = "delayed"
+            details += f"; latest article date is delayed ({latest_article.date()})"
+    else:
+        status = "failed"
+        details += "; no valid article timestamps"
+
     atomic_write_csv(combined, NEWS_CSV, NEWS_COLUMNS)
     log_quality(
         run_id=run_id,
@@ -304,7 +323,8 @@ def run(import_csv_path: str | None = None) -> int:
         loaded_rows=len(combined),
         source="RSS/manual",
         last_refresh_at=now_ist_iso(),
-        details=f"News rows stored: {len(combined)}",
+        details=details,
+        status_override=status,
     )
     logger.info("News update complete: %d rows written to %s", len(combined), NEWS_CSV)
     return 0
