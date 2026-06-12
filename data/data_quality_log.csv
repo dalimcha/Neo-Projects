@@ -7,3 +7,20 @@ prices_20260610_193031,prices,Nifty500,500,500,500,500,500,20,100.0,fresh,NSE Bh
 prices_20260611_085442,prices,Nifty500,500,500,500,500,500,20,100.0,fresh,NSE Bhavcopy + yfinance fallback,2026-06-11T08:55:53.854684+05:30,"{'loaded_rows': 500, 'valid_price_rows': 500, 'valid_1d_rows': 500, 'valid_sector_rows': 500, 'latest_price_date': '2026-06-10'}",2026-06-11T08:55:53.858981+05:30
 filings_20260611_104207,filings,Nifty500,0,30,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-11T10:42:09.149203+05:30,Stored filings rows: 30,2026-06-11T10:42:09.151737+05:30
 news_20260611_104209,news,Nifty500,0,270,0,0,0,0,0.0,fresh,RSS/manual,2026-06-11T10:42:12.899548+05:30,News rows stored: 270,2026-06-11T10:42:12.902039+05:30
+fundamentals_20260611_124534,fundamentals,Nifty500,500,493,0,0,0,493,98.6,fresh,screener,2026-06-11T12:45:34.621959+05:30,Imported from Master Document- Screener for Neo.csv; merge=True,2026-06-11T12:45:34.624207+05:30
+prices_20260611_124553,prices,Nifty500,500,500,500,500,500,492,100.0,fresh,NSE Bhavcopy + yfinance fallback,2026-06-11T12:47:25.232813+05:30,"{'loaded_rows': 500, 'valid_price_rows': 500, 'valid_1d_rows': 500, 'valid_sector_rows': 500, 'latest_price_date': '2026-06-11'}",2026-06-11T12:47:25.238431+05:30
+filings_20260611_124726,filings,Nifty500,0,29,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-11T12:47:28.727160+05:30,Stored filings rows: 29,2026-06-11T12:47:28.736218+05:30
+news_20260611_124729,news,Nifty500,0,267,0,0,0,0,0.0,fresh,RSS/manual,2026-06-11T12:47:33.599878+05:30,News rows stored: 267,2026-06-11T12:47:33.603598+05:30
+prices_20260611_124756,prices,Nifty500,500,500,500,500,500,492,100.0,fresh,NSE Bhavcopy + yfinance fallback,2026-06-11T12:49:39.740959+05:30,"{'loaded_rows': 500, 'valid_price_rows': 500, 'valid_1d_rows': 500, 'valid_sector_rows': 500, 'latest_price_date': '2026-06-11'}",2026-06-11T12:49:39.744824+05:30
+filings_20260611_124940,filings,Nifty500,0,29,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-11T12:49:42.927176+05:30,Stored filings rows: 29,2026-06-11T12:49:42.929481+05:30
+news_20260611_124943,news,Nifty500,0,268,0,0,0,0,0.0,fresh,RSS/manual,2026-06-11T12:49:47.762281+05:30,News rows stored: 268,2026-06-11T12:49:47.764673+05:30
+fundamentals_20260611_154040,fundamentals,Nifty500,500,493,0,0,0,493,98.6,fresh,screener,2026-06-11T15:40:40.522445+05:30,Imported from Master Document- Screener for Neo.csv; merge=True,2026-06-11T15:40:40.524080+05:30
+prices_20260611_154058,prices,Nifty500,500,500,500,500,500,492,100.0,fresh,NSE Bhavcopy + yfinance fallback,2026-06-11T15:43:02.538770+05:30,"{'loaded_rows': 500, 'valid_price_rows': 500, 'valid_1d_rows': 500, 'valid_sector_rows': 500, 'latest_price_date': '2026-06-11'}",2026-06-11T15:43:02.542740+05:30
+filings_20260611_154345,filings,Nifty500,0,30,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-11T15:43:48.209023+05:30,Stored filings rows: 30,2026-06-11T15:43:48.211017+05:30
+news_20260611_154348,news,Nifty500,0,268,0,0,0,0,0.0,fresh,RSS/manual,2026-06-11T15:43:52.127240+05:30,News rows stored: 268,2026-06-11T15:43:52.129654+05:30
+fundamentals_20260611_193608,fundamentals,Nifty500,500,493,0,0,0,493,98.6,fresh,screener,2026-06-11T19:36:08.982197+05:30,Imported from Master Document- Screener for Neo.csv; merge=True,2026-06-11T19:36:08.984525+05:30
+filings_20260611_232248,filings,Nifty500,0,30,0,0,0,0,0.0,fresh,NSE Corporate Announcements,,No live filings fetched; retained existing file.,2026-06-11T23:22:48.950413+05:30
+news_20260611_232300,news,Nifty500,0,268,0,0,0,0,0.0,fresh,RSS/manual,,No RSS items fetched; retained existing file.,2026-06-11T23:23:00.816507+05:30
+news_20260611_233951,news,Nifty500,0,4,0,0,0,0,0.0,fresh,RSS/manual,2026-06-11T23:39:51.839460+05:30,News rows stored: 4,2026-06-11T23:39:51.841484+05:30
+filings_20260611_233952,filings,Nifty500,0,29,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-11T23:39:53.082115+05:30,Stored filings rows: 29,2026-06-11T23:39:53.084542+05:30
+news_20260612_011439,news,Nifty500,0,4,0,0,0,0,0.0,fresh,RSS/manual,,No RSS items fetched; retained existing file.,2026-06-12T01:14:40.026124+05:30
