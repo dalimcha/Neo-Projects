@@ -173,7 +173,7 @@ with tabs[2]:
         caption="Data files",
     )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("")
     section_label("Update Data")
 
     col1, col2, col3 = st.columns(3)
@@ -213,7 +213,7 @@ with tabs[2]:
             st.cache_data.clear()
             ok_block("Caches cleared.")
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("")
     section_label("Upload Fundamentals File")
     info_block(
         "Upload a Screener, Trendlyne, or Bloomberg export. "

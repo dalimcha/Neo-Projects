@@ -44,7 +44,10 @@ def _load() -> pd.DataFrame:
 
 df = _load()
 
-page_header("", "")
+page_header(
+    "Return Quartiles",
+    "Relative performance matrix across 1M, 3M, 6M, 1Y, 3Y, 5Y, and 10Y to identify durable winners, reversals, and broken momentum.",
+)
 
 if df.empty:
     warn_block("No merged universe available. Refresh prices first.")
@@ -66,8 +69,9 @@ if sector_f != "All" and "sector" in fdf.columns:
 html_block(
     """
     <div class="hero-panel">
-      <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Return Quartiles</div>
+      <div class="hero-kicker">Return Quartiles</div>
       <div class="hero-title">Relative Performance Matrix</div>
+      <div class="hero-sub">Read the market by quartile persistence and transitions instead of single-period returns. Use this page to isolate compounders, reversals, and breakdowns across multiple horizons.</div>
     </div>
     """
 )

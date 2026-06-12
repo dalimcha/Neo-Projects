@@ -234,8 +234,8 @@ def _signal_buckets(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
 uni_df, ob_df, news_df, filings_df = _load()
 
 page_header(
-    "",
-    "",
+    "Ideas Lab",
+    "Scenario builder for value dislocations, fallen quality, event-backed movers, quartile transitions, and optional special-situation screens.",
 )
 
 if uni_df.empty:
@@ -361,8 +361,9 @@ html_block(
     <div class="hero-panel">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
         <div>
-          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Ideas Lab</div>
+          <div class="hero-kicker">Ideas Lab</div>
           <div class="hero-title">Multi-Metric Scenario Builder</div>
+          <div class="hero-sub">Experiment across valuation, quartiles, 52-week positioning, event catalysts, balance sheet quality, and optional order-book signals over multiple time horizons.</div>
         </div>
       </div>
     </div>

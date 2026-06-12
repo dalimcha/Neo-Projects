@@ -33,7 +33,10 @@ def _quarter_sort_key(q: str) -> tuple[int, int]:
 
 qdf, cal_df, uni_df, fund_df = _load()
 
-page_header("", "")
+page_header(
+    "Earnings",
+    "Reporting calendar, fresh result monitoring, and quarter-on-quarter operating change tracking.",
+)
 
 if qdf.empty and cal_df.empty:
     info_block("No quarterly financials or results calendar available yet.")
@@ -42,8 +45,9 @@ if qdf.empty and cal_df.empty:
 html_block(
     """
     <div class="hero-panel">
-      <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Earnings</div>
+      <div class="hero-kicker">Earnings</div>
       <div class="hero-title">Reporting Calendar and Beat / Miss Tracker</div>
+      <div class="hero-sub">Use this page to track who is reporting, what just came out, and whether operating performance is accelerating or softening versus the trailing baseline.</div>
     </div>
     """
 )
