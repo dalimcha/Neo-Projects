@@ -17,7 +17,7 @@ st.set_page_config(
 from utils.formatting import (
     inject_css, page_header, section_label, kpi_card, fmt_pct, fmt_cr,
     fmt_ratio, info_block, warn_block, ok_block, ai_box, badge_html,
-    score_bar, table_wrap,
+    score_bar, table_wrap, html_block,
     POS, NEG, ACCENT, TEXT3, BG2, BORDER,
 )
 from utils.data_loader import load_order_book, save_order_book
@@ -44,7 +44,7 @@ df = _scored()
 
 # ── Sidebar filters ───────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="sec-label">Filters</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Filters</div>')
 
     cls_filter = st.multiselect(
         "Classification",
@@ -58,20 +58,18 @@ with st.sidebar:
         sectors = ["All"]
     sector_f = st.selectbox("Sector", sectors)
 
-    min_score = st.slider("Minimum OB Score", 0, 100, 0)
+    min_score = st.slider("Minimum Score", 0, 100, 0)
     min_ob_rev = st.slider("Min OB / Revenue ratio", 0.0, 10.0, 0.0, 0.5)
+    ticker_search = st.text_input("Ticker Search", placeholder="e.g. LT, RVNL")
 
     st.markdown("---")
     verified_only = st.checkbox("Manually Verified Only", value=False)
 
     st.markdown("---")
-    st.markdown('<div class="sec-label">Actions</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Actions</div>')
     add_new = st.checkbox("Add New Company")
 
-page_header(
-    "Special Situations",
-    f"{len(df)} optional signal rows",
-)
+page_header("", "")
 
 if df.empty:
     warn_block(
@@ -81,6 +79,10 @@ if df.empty:
 
 # ── Apply filters ─────────────────────────────────────────────────────────────
 fdf = df.copy()
+if not fdf.empty:
+    if ticker_search.strip() and "ticker" in fdf.columns:
+        fdf = fdf[fdf["ticker"].astype(str).str.contains(ticker_search.strip().upper(), na=False)]
+
 if not fdf.empty:
     if cls_filter and "classification" in fdf.columns:
         fdf = fdf[fdf["classification"].isin(cls_filter)]
@@ -93,8 +95,21 @@ if not fdf.empty:
     if verified_only and "manually_verified" in fdf.columns:
         fdf = fdf[fdf["manually_verified"] == True]
 
+html_block(
+    f"""<div class="hero-panel">
+          <div class="hero-kicker">Special Situations</div>
+          <div class="hero-title">Optional Signal Surface</div>
+          <div class="hero-sub">Source-traceable order-book and special-situation names for optional screening, not the core workflow.</div>
+          <div style="margin-top:0.55rem;display:flex;gap:0.45rem;flex-wrap:wrap;">
+            <span class="chip">Rows {len(df)}</span>
+            <span class="chip">Filtered {len(fdf) if not df.empty else 0}</span>
+            <span class="chip">Verified {(df.get('manually_verified', pd.Series(dtype=bool)).sum() if not df.empty and 'manually_verified' in df.columns else 0)}</span>
+          </div>
+        </div>"""
+)
+
 # ── Summary KPIs ──────────────────────────────────────────────────────────────
-section_label("Portfolio Overview")
+section_label("Signal Summary")
 
 kpi_cols = st.columns(5)
 if not df.empty:
@@ -117,7 +132,7 @@ for col, (lbl, val, sub) in zip(kpi_cols, kpi_data):
     with col:
         kpi_card(lbl, val, sub)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
 # ── Charts ────────────────────────────────────────────────────────────────────
 col_a, col_b = st.columns([3, 2])
@@ -135,10 +150,10 @@ with col_b:
         fig = classification_donut(df)
         st.plotly_chart(fig, use_container_width=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
 # ── Master leaderboard ────────────────────────────────────────────────────────
-section_label(f"Special Situations Leaderboard — {len(fdf)} companies")
+section_label(f"Leaderboard — {len(fdf)} companies")
 
 if not fdf.empty:
     # Render table
@@ -185,7 +200,7 @@ if not fdf.empty:
             f"<td style='color:#94a3b8;'>{fmt_pct(r.get('ebitda_margin_pct',''))}</td>"
             f"<td style='color:{mt_col};font-size:0.69rem;'>{margin_t}</td>"
             f"<td>{fmt_ratio(r.get('debt_equity',''))}</td>"
-            f"<td style='color:{conf_col};font-family:\"IBM Plex Mono\",monospace;font-weight:600;'>{conf:.0f}</td>"
+            f"<td style='color:{conf_col};font-family:\"JetBrains Mono\",monospace;font-weight:600;'>{conf:.0f}</td>"
             f"<td>{verified}</td>"
             f"</tr>"
         )
@@ -223,7 +238,7 @@ if not fdf.empty:
         mime="text/csv",
     )
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
 # ── Individual company deep-dive ──────────────────────────────────────────────
 section_label("Company Score Breakdown")
@@ -263,7 +278,7 @@ if not df.empty:
                     f'<div style="display:flex;justify-content:space-between;'
                     f'font-size:0.72rem;margin-bottom:0.15rem;">'
                     f'<span style="color:#94a3b8;">{label}</span>'
-                    f'<span style="color:#e2e8f0;font-family:\'IBM Plex Mono\',monospace;">'
+                    f'<span style="color:#e2e8f0;font-family:\'JetBrains Mono\',monospace;">'
                     f'{pts:.1f}/{max_pts}</span></div>'
                     f'<div class="score-bar-wrap">'
                     f'<div class="score-bar-fill" style="width:{pct}%;background:#3b82f6;"></div>'
@@ -299,7 +314,7 @@ if not df.empty:
             ai_box(snippet, "Extracted Source Text")
 
 # ── Data Entry Form ───────────────────────────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 section_label("Scoring Model Reference")
 
 with st.expander("View scoring methodology"):
@@ -337,7 +352,7 @@ with st.expander("View scoring methodology"):
 
 # ── Add / Edit form ───────────────────────────────────────────────────────────
 if add_new:
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("")
     section_label("Add New Company to Special Situations Database")
 
     warn_block(

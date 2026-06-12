@@ -16,7 +16,7 @@ st.set_page_config(
 from utils.formatting import (
     inject_css, page_header, section_label, kpi_card, fmt_pct,
     fmt_price, fmt_cr, fmt_ratio, info_block, warn_block, ai_box,
-    table_wrap, badge_html, sentiment_badge, POS, NEG, ACCENT, TEXT3, BG2,
+    table_wrap, badge_html, sentiment_badge, POS, NEG, ACCENT, TEXT3, BG2, html_block,
 )
 from utils.data_loader import (
     load_universe, load_order_book, load_fundamentals,
@@ -38,7 +38,7 @@ inject_css()
 uni = load_universe()
 
 with st.sidebar:
-    st.markdown('<div class="sec-label">Company</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Company</div>')
     if uni.empty:
         st.warning("Universe not loaded")
         ticker = st.text_input("Enter ticker manually")
@@ -81,9 +81,44 @@ industry     = meta.get("industry", "")
 close_price = price.get("close") or price.get("price")
 ret_1d      = price.get("return_1d", 0) or 0
 if abs(ret_1d) < 5: ret_1d *= 100
-page_header(
-    company_name,
-    f"{ticker}  |  {sector}  |  {industry}",
+page_header("", "")
+
+latest_filing_subject = ""
+latest_filing_date = ""
+if not fil.empty:
+    tmp_fil = fil.copy()
+    if "date" in tmp_fil.columns:
+        tmp_fil["date"] = pd.to_datetime(tmp_fil["date"], errors="coerce")
+        tmp_fil = tmp_fil.sort_values("date", ascending=False)
+    latest_filing = tmp_fil.iloc[0]
+    latest_filing_subject = str(latest_filing.get("subject", "")).strip()
+    latest_filing_date = str(latest_filing.get("date", ""))[:10]
+
+latest_news_headline = ""
+latest_news_date = ""
+if not news_d.empty:
+    tmp_news = news_d.copy()
+    if "date" in tmp_news.columns:
+        tmp_news["date"] = pd.to_datetime(tmp_news["date"], errors="coerce")
+        tmp_news = tmp_news.sort_values("date", ascending=False)
+    latest_news = tmp_news.iloc[0]
+    latest_news_headline = str(latest_news.get("headline", "")).strip()
+    latest_news_date = str(latest_news.get("date", ""))[:10]
+
+html_block(
+    f"""<div class="hero-panel">
+          <div class="hero-kicker">Company Detail</div>
+          <div class="hero-title">{company_name}</div>
+          <div class="hero-sub">{ticker} · {sector or 'Sector N/A'} · {industry or 'Industry N/A'}</div>
+          <div style="margin-top:0.55rem;display:flex;gap:0.45rem;flex-wrap:wrap;">
+            <span class="chip">Price {fmt_price(close_price)}</span>
+            <span class="chip">1D {fmt_pct(ret_1d)}</span>
+            <span class="chip">MCap {fmt_cr(mcap) if mcap else '—'}</span>
+            <span class="chip">P/E {fmt_ratio(pe) if pe else '—'}</span>
+            <span class="chip">Latest Filing {latest_filing_date or '—'}</span>
+            <span class="chip">Latest News {latest_news_date or '—'}</span>
+          </div>
+        </div>"""
 )
 
 # ── KPI row ───────────────────────────────────────────────────────────────────
@@ -108,10 +143,10 @@ for col, (lbl, val, sub, pos) in zip(kpi_cols, kpi_data):
     with col:
         kpi_card(lbl, val, sub, delta_pos=pos)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab_names = ["Overview", "Financials", "Quarterly", "Valuation", "Order Book",
+tab_names = ["Overview", "Financials", "Quarterly", "Valuation", "Special Situations",
              "News & Filings", "AI Analyst Note", "Research Notes"]
 tabs = st.tabs(tab_names)
 
@@ -130,6 +165,24 @@ with tabs[0]:
                 "Add a description to data/universe.csv or use the AI summary below."
             )
 
+        section_label("Latest Public Context")
+        context_rows = []
+        if latest_filing_subject:
+            context_rows.append(
+                f"<tr><td class='left' style='color:#64748b;'>Latest Filing</td><td class='left'>{latest_filing_subject}</td><td>{latest_filing_date or '—'}</td></tr>"
+            )
+        if latest_news_headline:
+            context_rows.append(
+                f"<tr><td class='left' style='color:#64748b;'>Latest News</td><td class='left'>{latest_news_headline}</td><td>{latest_news_date or '—'}</td></tr>"
+            )
+        if context_rows:
+            table_wrap(
+                f"""<table class='trm'>
+                <thead><tr><th class='left'>Type</th><th class='left'>Headline / Subject</th><th>Date</th></tr></thead>
+                <tbody>{''.join(context_rows)}</tbody></table>""",
+                caption="Most recent linked events",
+            )
+
         # Price chart
         section_label("Price Chart")
         with st.spinner("Fetching price history…"):
@@ -142,8 +195,8 @@ with tabs[0]:
 
     with col_b:
         section_label("Return Profile")
-        ret_periods = ["1D","1W","1M","3M","6M","1Y"]
-        ret_cols    = ["return_1d","return_1w","return_1m","return_3m","return_6m","return_1y"]
+        ret_periods = ["1D","1W","1M","3M","6M","1Y","3Y","5Y","10Y"]
+        ret_cols    = ["return_1d","return_1w","return_1m","return_3m","return_6m","return_1y","return_3y","return_5y","return_10y"]
         ret_vals    = []
         for rc in ret_cols:
             v = price.get(rc)
@@ -156,6 +209,36 @@ with tabs[0]:
 
         fig = return_waterfall(ret_periods, ret_vals, ticker)
         st.plotly_chart(fig, use_container_width=True)
+
+        section_label("Sector Peer Snapshot")
+        full_uni = load_full_universe()
+        peer_rows = pd.DataFrame()
+        if not full_uni.empty and sector and "sector" in full_uni.columns:
+            peer_rows = full_uni[full_uni["sector"] == sector].copy()
+            if "market_cap_cr" in peer_rows.columns:
+                peer_rows = peer_rows.sort_values("market_cap_cr", ascending=False)
+            peer_rows = peer_rows[peer_rows["ticker"] != ticker].head(5)
+        if not peer_rows.empty:
+            rows = ""
+            for _, pr in peer_rows.iterrows():
+                r1y = pd.to_numeric(pr.get("return_1y"), errors="coerce")
+                if pd.notna(r1y) and abs(r1y) < 5:
+                    r1y *= 100
+                rows += (
+                    f"<tr><td class='ticker'>{pr.get('ticker','')}</td>"
+                    f"<td class='name'>{pr.get('company_name','')}</td>"
+                    f"<td>{fmt_cr(pr.get('market_cap_cr'))}</td>"
+                    f"<td>{fmt_ratio(pr.get('pe'))}</td>"
+                    f"<td>{fmt_pct(r1y) if pd.notna(r1y) else '—'}</td></tr>"
+                )
+            table_wrap(
+                f"""<table class='trm'><thead><tr>
+                <th class='left'>Ticker</th><th class='left'>Company</th><th>MCap</th><th>P/E</th><th>1Y</th>
+                </tr></thead><tbody>{rows}</tbody></table>""",
+                caption="Top 5 same-sector peers",
+            )
+        else:
+            info_block("No same-sector peers available.")
 
         section_label("Key Metrics")
         metrics = {
@@ -286,7 +369,7 @@ with tabs[2]:
             with col:
                 kpi_card(lbl, val, sub, delta_pos=pos)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("")
 
         # ── Selectable metric for the cross-year comparison ──────────────────
         section_label("Quarter-on-Quarter Across Years")
@@ -381,7 +464,7 @@ with tabs[2]:
                     caption_right=f"{ticker}",
                 )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("")
 
         # ── YoY growth trajectory (Revenue/EBITDA/PAT) ───────────────────────
         col_a, col_b = st.columns(2)
@@ -395,7 +478,7 @@ with tabs[2]:
             fig = quarterly_margin_chart(qdf, ticker)
             st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("")
 
         # ── Per-quarter summary cards (Q1/Q2/Q3/Q4 over multiple years) ──────
         section_label("Per-Quarter Multi-Year Summary — Revenue")
@@ -419,7 +502,7 @@ with tabs[2]:
                         yc = "pos" if s["yoy_pct"] > 0 else "neg"
                         yoy_html = (
                             f'<div style="font-size:0.71rem;color:#3d5270;margin-top:0.5rem;">'
-                            f'YoY: <span class="{yc}" style="font-family:\'IBM Plex Mono\',monospace;">'
+                            f'YoY: <span class="{yc}" style="font-family:\'JetBrains Mono\',monospace;">'
                             f'{s["yoy_pct"]:+.1f}%</span></div>'
                         )
                     cagr_html = ""
@@ -427,7 +510,7 @@ with tabs[2]:
                         cagr_html = (
                             f'<div style="font-size:0.71rem;color:#3d5270;">'
                             f'{s["n_years"]}Y CAGR: '
-                            f'<span style="color:#60a5fa;font-family:\'IBM Plex Mono\',monospace;">'
+                            f'<span style="color:#60a5fa;font-family:\'JetBrains Mono\',monospace;">'
                             f'{s["cagr_pct"]:+.1f}%</span></div>'
                         )
                     arrow = trend_arrow.get(s.get("trend", "flat"), "►")
@@ -446,7 +529,7 @@ with tabs[2]:
                         unsafe_allow_html=True,
                     )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("")
         section_label("Vs Peers — Same Quarter")
         full_uni = load_full_universe()
         if full_uni.empty or "sector" not in full_uni.columns or not sector:
@@ -534,7 +617,7 @@ with tabs[3]:
         else:
             info_block("No peers found in same sector.")
 
-# ── TAB 4: Order Book ─────────────────────────────────────────────────────────
+# ── TAB 4: Special Situations ─────────────────────────────────────────────────
 with tabs[4]:
     if ob.empty:
         warn_block(
@@ -554,7 +637,7 @@ with tabs[4]:
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            section_label("Order Book Intelligence")
+            section_label("Special Situations Intelligence")
             ob_data = {
                 "Order Book (Cr)":        fmt_cr(latest.get("order_book_cr")),
                 "Order Inflow (Cr, TTM)": fmt_cr(latest.get("order_inflow_cr")),
@@ -716,7 +799,7 @@ with tabs[7]:
                     border-radius:4px;padding:0.8rem 1rem;margin-bottom:0.5rem;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:0.35rem;">
                       <div>{tags_html}</div>
-                      <div style="font-size:0.65rem;color:#475569;font-family:'IBM Plex Mono',monospace;">
+                      <div style="font-size:0.65rem;color:#475569;font-family:'JetBrains Mono',monospace;">
                         {date_str}</div>
                     </div>
                     <div style="font-size:0.82rem;color:#94a3b8;line-height:1.65;">

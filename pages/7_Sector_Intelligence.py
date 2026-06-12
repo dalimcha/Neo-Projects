@@ -17,7 +17,7 @@ from utils.formatting import (
     fmt_cr, fmt_ratio, info_block, ai_box, table_wrap, badge_html, html_block,
     ACCENT, POS, NEG, TEXT3, BG2,
 )
-from utils.data_loader import load_sectors, load_full_universe, load_order_book, load_news, load_quarterly
+from utils.data_loader import load_sectors, load_full_universe, load_order_book, load_news, load_quarterly, load_filings
 from utils.scoring import score_order_book_df
 from utils.charting import sector_heatmap, peer_comparison_bar
 
@@ -229,6 +229,7 @@ if not sectors_df.empty:
 uni_df  = load_full_universe()
 ob_df   = load_order_book()
 news_df = load_news()
+filings_df = load_filings()
 
 # Filter universe to this sector
 if not uni_df.empty and "sector" in uni_df.columns:
@@ -284,6 +285,38 @@ if not sec_companies.empty:
     for col, d in zip(kcols, kpi_data):
         with col:
             kpi_card(*d[:3], delta_pos=d[3] if len(d) > 3 else None)
+
+if not sec_companies.empty:
+    section_label("Today")
+    tickers_in_sector = set(sec_companies["ticker"].astype(str).str.upper())
+    linked_news = pd.DataFrame()
+    if not news_df.empty and "tickers_mentioned" in news_df.columns:
+        linked_news = news_df[
+            news_df["tickers_mentioned"].astype(str).apply(
+                lambda s: any(t in tickers_in_sector for t in [x.strip().upper() for x in s.split("|") if x.strip()])
+            )
+        ].copy()
+    linked_filings = pd.DataFrame()
+    if not filings_df.empty and "ticker" in filings_df.columns:
+        linked_filings = filings_df[filings_df["ticker"].astype(str).str.upper().isin(tickers_in_sector)].copy()
+    top_gainer = sec_companies.sort_values("return_1d", ascending=False).head(1) if "return_1d" in sec_companies.columns else pd.DataFrame()
+    top_loser = sec_companies.sort_values("return_1d", ascending=True).head(1) if "return_1d" in sec_companies.columns else pd.DataFrame()
+    signal_cols = st.columns(4)
+    with signal_cols[0]:
+        if not top_gainer.empty:
+            rg = top_gainer.iloc[0]
+            kpi_card("Top Gainer", str(rg.get("ticker", "—")), fmt_pct((rg.get("return_1d", 0) or 0) * 100 if abs(rg.get("return_1d", 0) or 0) < 5 else (rg.get("return_1d", 0) or 0)), delta_pos=True)
+    with signal_cols[1]:
+        if not top_loser.empty:
+            rl = top_loser.iloc[0]
+            ret_val = (rl.get("return_1d", 0) or 0)
+            if abs(ret_val) < 5:
+                ret_val *= 100
+            kpi_card("Top Loser", str(rl.get("ticker", "—")), fmt_pct(ret_val), delta_pos=False)
+    with signal_cols[2]:
+        kpi_card("Linked News", str(len(linked_news)), "sector-linked")
+    with signal_cols[3]:
+        kpi_card("Linked Filings", str(len(linked_filings)), "sector-linked")
 
 st.write("")
 
@@ -524,8 +557,17 @@ with tabs[4]:
 # ── TAB 6: Recent News ────────────────────────────────────────────────────────
 with tabs[5]:
     section_label("Recent News")
-    if not news_df.empty and "sector" in news_df.columns:
-        sec_news = news_df[news_df["sector"].astype(str).str.contains(sector.split()[0], case=False, na=False)]
+    if not news_df.empty:
+        sec_news = pd.DataFrame()
+        if "tickers_mentioned" in news_df.columns:
+            tickers_in_sector = set(sec_companies["ticker"].astype(str).str.upper()) if not sec_companies.empty else set()
+            sec_news = news_df[
+                news_df["tickers_mentioned"].astype(str).apply(
+                    lambda s: any(t in tickers_in_sector for t in [x.strip().upper() for x in s.split("|") if x.strip()])
+                )
+            ].copy()
+        if sec_news.empty and "sector" in news_df.columns:
+            sec_news = news_df[news_df["sector"].astype(str).str.contains(sector.split()[0], case=False, na=False)]
         if sec_news.empty:
             info_block("No news found for this sector.")
         else:
