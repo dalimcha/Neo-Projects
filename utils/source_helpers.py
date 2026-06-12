@@ -31,7 +31,7 @@ class SourceTag:
         conf = (f' · <span style="color:#60a5fa;">conf {self.confidence}</span>'
                 if self.confidence is not None else "")
         return (
-            f'<span style="font-family:\'IBM Plex Mono\',monospace;'
+            f'<span style="font-family:\'JetBrains Mono\',monospace;'
             f'font-size:0.65rem;color:{col};letter-spacing:0.02em;">'
             f'{self.source} · {self.fetched_at.strftime("%d %b %H:%M") if self.fetched_at else "—"}'
             f'{conf} · {verif}'
@@ -43,11 +43,11 @@ def na(label: str = "N/A", source: SourceTag | None = None) -> str:
     """Standard rendering for a missing value."""
     if source:
         return (
-            f'<span style="color:#475569;font-family:\'IBM Plex Mono\',monospace;">'
+            f'<span style="color:#475569;font-family:\'JetBrains Mono\',monospace;">'
             f'{label}</span>'
             f'<div style="font-size:0.6rem;color:#2d3f5a;margin-top:2px;">{source.short()}</div>'
         )
-    return f'<span style="color:#475569;font-family:\'IBM Plex Mono\',monospace;">{label}</span>'
+    return f'<span style="color:#475569;font-family:\'JetBrains Mono\',monospace;">{label}</span>'
 
 
 def safe_div(num, den, fallback: str = "N/A") -> float | str:

@@ -14,7 +14,7 @@ st.set_page_config(
 
 from utils.formatting import (
     inject_css, page_header, section_label, kpi_card, fmt_pct,
-    fmt_cr, fmt_ratio, info_block, ai_box, table_wrap, badge_html,
+    fmt_cr, fmt_ratio, info_block, ai_box, table_wrap, badge_html, html_block,
     ACCENT, POS, NEG, TEXT3, BG2,
 )
 from utils.data_loader import load_sectors, load_full_universe, load_order_book, load_news, load_quarterly
@@ -204,7 +204,7 @@ SECTOR_INTEL = {
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="sec-label">Select Sector</div>', unsafe_allow_html=True)
+    html_block('<div class="sec-label">Select Sector</div>')
     sectors_df = load_sectors()
     all_sectors = sorted(SECTOR_INTEL.keys())
     if not sectors_df.empty and "display_name" in sectors_df.columns:
@@ -212,7 +212,7 @@ with st.sidebar:
 
     sector = st.selectbox("Sector", all_sectors, index=0)
 
-page_header("Sector Intelligence", sector)
+page_header("", "")
 
 # ── Get sector data ───────────────────────────────────────────────────────────
 intel = SECTOR_INTEL.get(sector, {})
@@ -249,12 +249,13 @@ cycle_col = {
     "Neutral": "#64748b",
 }.get(cycle, "#64748b")
 
-st.markdown(
+html_block(
     f"""<div class="sec-hero">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;">
             <div>
-              <div class="sec-hero-title">{sector}</div>
-              <div class="sec-hero-tag">{tagline}</div>
+              <div class="hero-kicker">Sector Intelligence</div>
+              <div class="hero-title">{sector}</div>
+              <div class="hero-sub">{tagline}</div>
             </div>
             <div style="text-align:right;">
               <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;
@@ -263,8 +264,7 @@ st.markdown(
             </div>
           </div>
           {f'<div style="margin-top:0.75rem;font-size:0.8rem;color:#94a3b8;line-height:1.65;">{cycle_note}</div>' if cycle_note else ''}
-        </div>""",
-    unsafe_allow_html=True,
+        </div>"""
 )
 
 # ── KPIs from universe ────────────────────────────────────────────────────────
@@ -285,12 +285,12 @@ if not sec_companies.empty:
         with col:
             kpi_card(*d[:3], delta_pos=d[3] if len(d) > 3 else None)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tabs = st.tabs([
     "Overview", "Key Companies", "Valuation Comparison",
-    "QoQ Rollup", "Order Book Opportunities", "Recent News",
+    "QoQ Rollup", "Special Situations", "Recent News",
 ])
 
 # ── TAB 1: Overview ───────────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ with tabs[0]:
                 )
 
         if intel.get("risks"):
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.write("")
             section_label("Key Risks")
             for r in intel["risks"]:
                 st.markdown(
@@ -328,7 +328,7 @@ with tabs[0]:
                 )
 
         if intel.get("valuation_note"):
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.write("")
             section_label("Valuation Context")
             ai_box(intel["valuation_note"], "Valuation Note")
 
@@ -359,7 +359,7 @@ with tabs[1]:
                               <div style="font-size:0.8rem;font-weight:600;color:#3b82f6;">{c}</div>
                               <div style="font-size:0.68rem;color:#475569;">{fmt_cr(r.get('market_cap_cr',''))}</div>
                             </div>
-                            <div class="{cls}" style="font-size:0.78rem;font-family:'IBM Plex Mono',monospace;">
+                            <div class="{cls}" style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;">
                               {fmt_pct(ret_1d)}</div>
                           </div>""",
                         unsafe_allow_html=True,
@@ -370,7 +370,7 @@ with tabs[1]:
                         unsafe_allow_html=True,
                     )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("")
 
     if not sec_companies.empty:
         section_label("All Companies in Sector")
@@ -483,15 +483,15 @@ with tabs[3]:
                 },
             )
 
-# ── TAB 5: Order Book Opportunities ──────────────────────────────────────────
+# ── TAB 5: Special Situations ────────────────────────────────────────────────
 with tabs[4]:
-    section_label("Order Book Opportunities")
+    section_label("Special Situations")
     if ob_df.empty:
-        info_block("Order book database empty.")
+        info_block("Special situations database empty.")
     else:
         sec_ob = ob_df[ob_df.get("sector", pd.Series()) == sector] if "sector" in ob_df.columns else pd.DataFrame()
         if sec_ob.empty:
-            info_block(f"No order book entries for {sector}.")
+            info_block(f"No special situations currently mapped for {sector}.")
         else:
             from utils.scoring import score_order_book_df
             sec_ob_s = score_order_book_df(sec_ob)

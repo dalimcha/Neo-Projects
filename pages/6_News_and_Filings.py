@@ -37,6 +37,8 @@ from utils.data_loader import (
 
 inject_css()
 
+DEBUG_MODE = str(st.query_params.get("debug", "0")) == "1"
+
 
 def _last_refresh(log_df: pd.DataFrame, dataset: str) -> tuple[str, str]:
     if log_df.empty or "dataset" not in log_df.columns:
@@ -79,6 +81,21 @@ def _fallback_dataset_status(df: pd.DataFrame) -> tuple[str, str]:
 def _safe_text(value: object, fallback: str = "N/A") -> str:
     text = str(value or "").strip()
     return text if text else fallback
+
+
+def _suggested_action(row: pd.Series, mode: str) -> str:
+    score = int(pd.to_numeric(row.get("materiality_score"), errors="coerce") or 0)
+    sentiment = str(row.get("sentiment", "neutral")).strip().lower()
+    event_type = str(row.get("type" if mode == "filings" else "categories", "")).strip().lower()
+    if score >= 85 or ("result" in event_type and sentiment == "positive"):
+        return "Review Now"
+    if score >= 70 or ("order" in event_type and sentiment != "negative"):
+        return "Add to Queue"
+    if sentiment == "negative" and score >= 55:
+        return "Risk Check"
+    if score >= 40 or sentiment == "positive":
+        return "Watch"
+    return "Ignore"
 
 
 def _run_script(script_name: str, args: list[str] | None = None) -> tuple[bool, str]:
@@ -145,6 +162,7 @@ def _render_event_rows(df: pd.DataFrame, mode: str) -> None:
         material = f"{int(pd.to_numeric(row.get('materiality_score'), errors='coerce') or 0)}" if is_material else "0"
         sentiment_html = sentiment_badge(sentiment)
         summary_cell = summary if summary else "No AI summary yet."
+        action = _suggested_action(row, mode)
         rows += (
             "<tr>"
             f"<td class='ticker'>{ticker}</td>"
@@ -153,6 +171,7 @@ def _render_event_rows(df: pd.DataFrame, mode: str) -> None:
             f"<td class='left'>{event_type}</td>"
             f"<td>{sentiment_html}</td>"
             f"<td>{material}</td>"
+            f"<td>{action}</td>"
             f"<td class='left'>{source}</td>"
             f"<td class='left' style='max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{summary_cell}</td>"
             f"<td>{date_str}</td>"
@@ -169,6 +188,7 @@ def _render_event_rows(df: pd.DataFrame, mode: str) -> None:
               <th class='left'>Type</th>
               <th>Sentiment</th>
               <th>Score</th>
+              <th>Action</th>
               <th class='left'>Source</th>
               <th class='left'>Summary</th>
               <th>Date</th>
@@ -243,28 +263,34 @@ with st.sidebar:
         default_days = 730
     days_back = st.slider("Days Back", min_value=1, max_value=730, value=default_days)
 
-page_header(
-    "News & Filings",
-    f"Event layer for explaining stock and sector moves | Filings: {filings_status} | News: {news_status}",
+page_header("", "")
+
+material_items = 0
+if not filings_df.empty and "is_material" in filings_df.columns:
+    material_items += int(filings_df["is_material"].fillna(False).sum())
+if not news_df.empty and "is_material" in news_df.columns:
+    material_items += int(news_df["is_material"].fillna(False).sum())
+
+html_block(
+    f"""<div class="hero-panel">
+          <div class="hero-kicker">Event Tape</div>
+          <div class="hero-title">News and Filings</div>
+          <div class="hero-sub">Actionability-first event layer for daily catalyst detection, mover attribution, and meeting prep.</div>
+          <div style="margin-top:0.55rem;display:flex;gap:0.45rem;flex-wrap:wrap;">
+            <span class="chip">Material {material_items}</span>
+            <span class="chip">Filings {len(filings_df)}</span>
+            <span class="chip">News {len(news_df)}</span>
+            <span class="chip">Universe {len(universe_df)}</span>
+          </div>
+        </div>"""
 )
 
 if filings_status in {"Failed", "Stale"} and news_status in {"Failed", "Stale"}:
     warn_block("Both event feeds are stale or failed. Refresh filings and news before relying on move explanations.")
 elif filings_status == "Cached" or news_status == "Cached":
-    warn_block("You are looking at older seeded event data. Refresh filings and news to make this page usable for daily analysis.")
+    info_block("Using cached event data. Refresh filings and news to restore daily catalyst coverage.")
 
-section_label("Refresh Status")
-status_cols = st.columns(4)
-with status_cols[0]:
-    kpi_card("Filings Status", filings_status, filings_ts)
-with status_cols[1]:
-    kpi_card("News Status", news_status, news_ts)
-with status_cols[2]:
-    kpi_card("Filings Rows", str(len(filings_df)), "Canonical rows")
-with status_cols[3]:
-    kpi_card("News Rows", str(len(news_df)), "Canonical rows")
-
-section_label("Coverage")
+section_label("Signal")
 latest_filing_map = _latest_event_map(filings_df, "ticker", "subject")
 latest_news_map: dict[str, str] = {}
 if not news_df.empty and "tickers_mentioned" in news_df.columns:
@@ -282,9 +308,9 @@ coverage_cols = st.columns(4)
 with coverage_cols[0]:
     kpi_card("Universe", str(len(universe_df)), "Tracked stocks")
 with coverage_cols[1]:
-    kpi_card("Tickers With Filings", str(len(latest_filing_map)), "Latest filing linked")
+    kpi_card("Linked Filings", str(len(latest_filing_map)), "Stocks with filing context")
 with coverage_cols[2]:
-    kpi_card("Tickers With News", str(len(latest_news_map)), "Latest news linked")
+    kpi_card("Linked News", str(len(latest_news_map)), "Stocks with news context")
 with coverage_cols[3]:
     movers_covered = 0
     if not returns_df.empty and "ticker" in returns_df.columns:
@@ -293,7 +319,7 @@ with coverage_cols[3]:
             1 for t in movers["ticker"].astype(str).str.upper()
             if t in latest_filing_map or t in latest_news_map
         )
-    kpi_card("Top Movers Explained", str(movers_covered), "Top-20 gainers with linked events")
+    kpi_card("Movers Explained", str(movers_covered), "Top-20 gainers with linked events")
 
 if not filings_df.empty and "date" in filings_df.columns:
     filings_filtered = filings_df.copy()
@@ -340,9 +366,9 @@ if material_only:
         news_filtered = news_filtered[news_filtered["is_material"]]
 
 tab1, tab2, tab3, tab4 = st.tabs([
-    "Latest Filings",
-    "Latest News",
-    "Material Events",
+    "Filings",
+    "News",
+    "Material",
     "Mover Context",
 ])
 
@@ -410,9 +436,7 @@ with tab4:
             caption_right="Used by Biggest Movers workflow",
         )
 
-section_label("Operational Notes")
-
-if not failed_df.empty:
+if DEBUG_MODE and not failed_df.empty:
     recent_failures = failed_df[
         failed_df["dataset"].astype(str).isin(["news", "filings"])
     ].head(10).copy()
@@ -446,5 +470,3 @@ if not failed_df.empty:
         )
     else:
         info_block("No recent news/filings failures logged.")
-else:
-    info_block("No news/filings failures logged.")

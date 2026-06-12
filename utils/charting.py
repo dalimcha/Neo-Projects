@@ -31,7 +31,7 @@ TEAL    = "#2dd4bf"
 _LAYOUT_BASE = dict(
     paper_bgcolor="#0a1020",
     plot_bgcolor="#0c1622",
-    font=dict(family="'IBM Plex Sans', sans-serif", color=TEXT2, size=11),
+    font=dict(family="'Inter', sans-serif", color=TEXT2, size=11),
     margin=dict(l=52, r=20, t=40, b=42),
     legend=dict(
         bgcolor="rgba(10,16,32,0.8)",
@@ -42,19 +42,19 @@ _LAYOUT_BASE = dict(
     xaxis=dict(
         showgrid=True, gridcolor="#111827", gridwidth=1,
         linecolor="#141e30",
-        tickfont=dict(size=10, color="#3d5270", family="'IBM Plex Mono', monospace"),
+        tickfont=dict(size=10, color="#3d5270", family="'JetBrains Mono', monospace"),
         zeroline=False,
     ),
     yaxis=dict(
         showgrid=True, gridcolor="#111827", gridwidth=1,
         linecolor="#141e30",
-        tickfont=dict(size=10, color="#3d5270", family="'IBM Plex Mono', monospace"),
+        tickfont=dict(size=10, color="#3d5270", family="'JetBrains Mono', monospace"),
         zeroline=False,
     ),
     hoverlabel=dict(
         bgcolor="#111827",
         bordercolor="#1e2d45",
-        font=dict(size=11, color=TEXT2, family="'IBM Plex Mono', monospace"),
+        font=dict(size=11, color=TEXT2, family="'JetBrains Mono', monospace"),
     ),
 )
 
@@ -64,7 +64,7 @@ def _apply_base(fig: go.Figure, title: str = "", height: int = 360) -> go.Figure
     if title:
         layout["title"] = dict(
             text=title,
-            font=dict(size=11, color="#64748b", family="'IBM Plex Sans', sans-serif"),
+            font=dict(size=11, color="#64748b", family="'Inter', sans-serif"),
             x=0, xanchor="left", y=0.98,
         )
     fig.update_layout(**layout)
@@ -484,7 +484,7 @@ def _empty_chart(msg: str = "No data available", height: int = 200) -> go.Figure
     fig.add_annotation(
         text=msg, xref="paper", yref="paper",
         x=0.5, y=0.5, showarrow=False,
-        font=dict(size=11, color="#2d3f5a", family="'IBM Plex Sans', sans-serif"),
+        font=dict(size=11, color="#2d3f5a", family="'Inter', sans-serif"),
     )
     _apply_base(fig, height=height)
     fig.update_xaxes(visible=False)
@@ -685,7 +685,7 @@ def quarterly_heatmap(qdf: pd.DataFrame, metric: str, ticker: str = "") -> go.Fi
         y=list(pv.index),
         text=text,
         texttemplate="%{text}",
-        textfont=dict(size=11, color="#e2e8f0", family="'IBM Plex Mono', monospace"),
+        textfont=dict(size=11, color="#e2e8f0", family="'JetBrains Mono', monospace"),
         colorscale=[
             [0.0, "#1c1917"],
             [0.3, "#0f1929"],
