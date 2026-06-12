@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 import pandas as pd
 import streamlit as st
 
@@ -130,8 +131,8 @@ report = build_universe_report(
 
 price_ts = _latest_price_ts(returns_df)
 page_header(
-    "",
-    "",
+    "India Public Markets Intelligence Terminal",
+    "Daily operating board for market pulse, company research, and catalyst monitoring.",
     ts=False,
     data_status="Fresh" if report.passes else "Delayed",
     stamp_text=_stamp(report, price_ts),
@@ -170,8 +171,9 @@ html_block(
     <div class="hero-panel">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
         <div>
-          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Morning Brief</div>
-          <div class="hero-title">India Public Markets</div>
+          <div class="hero-kicker">Operating Brief</div>
+          <div class="hero-title">Today&apos;s Market Operating Board</div>
+          <div class="hero-sub">Use this surface to open the day fast: market tone, linked catalysts, sector pulse, and the live research grid.</div>
         </div>
         <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
           <span class="pill-chip"><strong>Universe</strong>{report.valid_price_rows}/{report.expected_count}</span>
@@ -182,7 +184,12 @@ html_block(
     </div>
     """
 )
-st.code("\n".join(brief_lines), language=None)
+html_block(
+    "<div class='surface-box'>"
+    "<div class='surface-title'>Morning Brief</div>"
+    "<div class='surface-note'>" + "<br>".join(escape(line) for line in brief_lines) + "</div>"
+    "</div>"
+)
 st.download_button("Copy Morning Brief", data="\n".join(brief_lines), file_name="morning_brief.txt", mime="text/plain")
 
 section_label("Today's Signal")

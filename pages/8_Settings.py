@@ -154,7 +154,7 @@ with tabs[2]:
             status = '<span style="color:#ef4444;">Missing</span>'
         rows += (
             f"<tr>"
-            f"<td class='left' style='color:#3b82f6;font-family:\"IBM Plex Mono\",monospace;'>{fname}</td>"
+            f"<td class='left' style='color:#3b82f6;font-family:\"JetBrains Mono\",monospace;'>{fname}</td>"
             f"<td class='left' style='color:#64748b;'>{desc}</td>"
             f"<td>{size_str}</td>"
             f"<td>{status}</td>"

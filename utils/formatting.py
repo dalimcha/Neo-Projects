@@ -8,6 +8,7 @@ for the India Public Markets Intelligence Terminal.
 from __future__ import annotations
 import math
 import re
+from html import escape
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -58,7 +59,7 @@ def html_block(markup: str) -> None:
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
 
 /* ── Reset & Base ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
@@ -145,20 +146,20 @@ footer { display: none; }
 
 /* ── Typography ────────────────────────────────────────────── */
 h1 {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 2rem !important; font-weight: 800 !important;
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+    font-size: 2rem !important; font-weight: 700 !important;
     color: #f8fafc !important;
-    letter-spacing: -0.04em !important;
+    letter-spacing: -0.05em !important;
     line-height: 1.15 !important;
 }
 h2 {
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
     font-size: 0.95rem !important; font-weight: 700 !important;
     color: #ffffff !important; text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
 }
 h3 {
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
     font-size: 0.78rem !important; font-weight: 700 !important;
     color: #a0aec0 !important; text-transform: uppercase !important;
     letter-spacing: 0.09em !important;
@@ -886,26 +887,26 @@ table.trm tr:last-child td { border-bottom: none; }
 }
 .pill-chip strong {
     color:#ffffff;
-    font-family:'Inter', sans-serif;
+    font-family:'Space Grotesk', 'Inter', sans-serif;
     font-size:0.82rem;
 }
 .ticker-glow {
-    font-family:'Inter', sans-serif;
+    font-family:'Space Grotesk', 'Inter', sans-serif;
     font-weight:700;
-    letter-spacing:0.03em;
+    letter-spacing:0.01em;
     color:#60a5fa;
     text-transform:uppercase;
-    text-shadow:0 0 18px rgba(96,165,250,0.16);
+    text-shadow:0 0 22px rgba(96,165,250,0.16);
 }
 .hero-panel {
     background:
-      linear-gradient(180deg, rgba(20,27,61,0.98) 0%, rgba(17,23,53,0.98) 100%),
-      radial-gradient(circle at top right, rgba(59,130,246,0.06) 0%, transparent 32%);
-    border:1px solid #2d3a5f;
-    border-radius:16px;
-    padding:0.95rem 1.05rem;
-    box-shadow:0 14px 34px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.03);
-    margin-bottom:0.9rem;
+      linear-gradient(180deg, rgba(20,27,61,0.96) 0%, rgba(14,19,44,0.98) 100%),
+      radial-gradient(circle at top right, rgba(59,130,246,0.08) 0%, transparent 34%);
+    border:1px solid rgba(96,165,250,0.18);
+    border-radius:18px;
+    padding:1.1rem 1.15rem;
+    box-shadow:0 18px 42px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.03);
+    margin-bottom:1rem;
     position:relative;
     overflow:hidden;
 }
@@ -918,17 +919,55 @@ table.trm tr:last-child td { border-bottom: none; }
     background:linear-gradient(90deg, rgba(59,130,246,0), rgba(59,130,246,0.75), rgba(59,130,246,0));
 }
 .hero-title {
-    font-family:'Inter', sans-serif;
-    font-size:1.05rem;
-    font-weight:800;
+    font-family:'Space Grotesk', 'Inter', sans-serif;
+    font-size:1.18rem;
+    font-weight:700;
     color:#f8fafc;
-    letter-spacing:-0.02em;
-    margin-bottom:0.18rem;
+    letter-spacing:-0.04em;
+    margin-bottom:0.15rem;
 }
 .hero-sub {
     color:#a0aec0;
     font-size:0.82rem;
     line-height:1.55;
+}
+.hero-kicker {
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.64rem;
+    letter-spacing:0.10em;
+    text-transform:uppercase;
+    color:#60a5fa;
+    margin-bottom:0.35rem;
+}
+.ticker-hero {
+    font-family:'Space Grotesk', 'Inter', sans-serif;
+    font-size:1.42rem;
+    font-weight:700;
+    letter-spacing:-0.05em;
+    color:#e0f2fe;
+}
+.pg-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:1rem;
+    padding:0.25rem 0 0.7rem 0;
+    margin-bottom:0.6rem;
+    border-bottom:1px solid rgba(96,165,250,0.10);
+}
+.pg-ts {
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.03em;
+}
+.trm td.ticker {
+    font-family:'Space Grotesk', 'Inter', sans-serif !important;
+    font-weight:700 !important;
+    letter-spacing:-0.02em !important;
+    color:#7dd3fc !important;
+}
+.trm td.name {
+    color:#e2e8f0 !important;
 }
 </style>
 """
@@ -1088,20 +1127,23 @@ def page_header(
     stamp_text: str | None = None,
     paused_message: str | None = None,
 ) -> None:
+    safe_title = escape(title)
+    safe_subtitle = escape(subtitle)
+    safe_stamp = escape(stamp_text) if stamp_text else None
     title_html = (
-        f"<div style=\"font-family:'Inter',sans-serif;font-size:0.98rem;font-weight:800;color:{TEXT};\">{title}</div>"
-        if title else ""
+        f"<div style=\"font-family:'Space Grotesk','Inter',sans-serif;font-size:1.08rem;font-weight:700;letter-spacing:-0.04em;color:{TEXT};\">{safe_title}</div>"
+        if safe_title else ""
     )
     subtitle_html = (
-        f"<div style=\"font-size:0.74rem;color:{TEXT3};margin-top:0.18rem;\">{subtitle}</div>"
-        if subtitle else ""
+        f"<div style=\"font-size:0.74rem;color:{TEXT3};margin-top:0.18rem;\">{safe_subtitle}</div>"
+        if safe_subtitle else ""
     )
-    if stamp_text:
-        stamp = stamp_text
+    if safe_stamp:
+        stamp = safe_stamp
     elif data_ts:
-        stamp = f"Updated {data_ts}"
+        stamp = escape(f"Updated {data_ts}")
     else:
-        stamp = datetime.now().strftime("%d %b %H:%M") if ts else ""
+        stamp = escape(datetime.now().strftime("%d %b %H:%M")) if ts else ""
     color = {
         "Fresh": POS,
         "Delayed": WARN,
@@ -1121,13 +1163,15 @@ def page_header(
 
 
 def section_label(text: str) -> None:
-    html_block(f'<div class="sec-label">{text}</div>')
+    html_block(f'<div class="sec-label">{escape(text)}</div>')
 
 
 def kpi_card(label: str, value: str, delta: str = "", delta_pos: bool | None = None) -> None:
+    label = escape(str(label))
+    value = escape(str(value))
     if delta:
         cls = "pos" if delta_pos else ("neg" if delta_pos is False else "neu")
-        delta_html = f'<div class="kpi-sub {cls}">{delta}</div>'
+        delta_html = f'<div class="kpi-sub {cls}">{escape(str(delta))}</div>'
     else:
         delta_html = ""
     html_block(
@@ -1151,6 +1195,12 @@ def index_card(
     Renders 'N/A' cleanly when value is missing. Never shows fake change %%
     when value is missing.
     """
+    safe_name = escape(str(name))
+    safe_value = escape(str(value))
+    safe_change = escape(str(change))
+    safe_pts = escape(str(pts))
+    safe_source = escape(str(source))
+    safe_data_ts = escape(str(data_ts))
     missing = (value in ("", "—", None) or value == "N/A")
 
     cls     = "pos" if is_up else ("neg" if is_up is False else "neu")
@@ -1163,9 +1213,9 @@ def index_card(
                     'Data not available</div>')
         dir_cls = ""
     else:
-        val_html = f'<div class="idx-val">{value}</div>'
-        pts_html = f'&nbsp;<span style="color:{TEXT3};">{pts}</span>' if pts else ""
-        chg_html = f'<div class="idx-chg {cls}"><span>{change}</span>{pts_html}</div>'
+        val_html = f'<div class="idx-val">{safe_value}</div>'
+        pts_html = f'&nbsp;<span style="color:{TEXT3};">{safe_pts}</span>' if pts else ""
+        chg_html = f'<div class="idx-chg {cls}"><span>{safe_change}</span>{pts_html}</div>'
 
     src_html = ""
     if source or data_ts:
@@ -1173,13 +1223,13 @@ def index_card(
             f'<div style="font-size:0.58rem;color:#2d3f5a;margin-top:0.3rem;'
             f'font-family:\'JetBrains Mono\',monospace;letter-spacing:0.02em;'
             f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
-            f'{source}{" · " if source and data_ts else ""}{data_ts}'
+            f'{safe_source}{" · " if source and data_ts else ""}{safe_data_ts}'
             f'</div>'
         )
 
     html_block(
         f"""<div class="idx-bar {dir_cls}">
-              <div class="idx-name">{name}</div>
+              <div class="idx-name">{safe_name}</div>
               {val_html}
               {chg_html}
               {src_html}
@@ -1188,22 +1238,22 @@ def index_card(
 
 
 def info_block(text: str) -> None:
-    html_block(f'<div class="info-blk">{text}</div>')
+    html_block(f'<div class="info-blk">{escape(str(text))}</div>')
 
 
 def warn_block(text: str) -> None:
-    html_block(f'<div class="warn-blk">{text}</div>')
+    html_block(f'<div class="warn-blk">{escape(str(text))}</div>')
 
 
 def ok_block(text: str) -> None:
-    html_block(f'<div class="ok-blk">{text}</div>')
+    html_block(f'<div class="ok-blk">{escape(str(text))}</div>')
 
 
 def ai_box(text: str, label: str = "AI Analysis") -> None:
     html_block(
         f"""<div class="ai-box">
-              <div class="ai-lbl">{label}</div>
-              <div class="ai-txt">{text}</div>
+              <div class="ai-lbl">{escape(str(label))}</div>
+              <div class="ai-txt">{escape(str(text))}</div>
             </div>"""
     )
 

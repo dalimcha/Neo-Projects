@@ -58,8 +58,8 @@ price_ts = _latest_ts(quality_log, "prices")
 fund_ts = _latest_ts(quality_log, "fundamentals")
 
 page_header(
-    "",
-    "",
+    "All Companies",
+    "Master research grid across price, valuation, growth, ownership, filings, and long-duration return quartiles.",
     data_status="Fresh" if len(df) >= 475 else "Delayed",
     data_ts=price_ts,
 )
@@ -91,8 +91,9 @@ html_block(
     <div class="hero-panel">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
         <div>
-          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">All Companies</div>
-          <div class="hero-title">Core Research Grid</div>
+          <div class="hero-kicker">Research Grid</div>
+          <div class="hero-title">Core Company Research Surface</div>
+          <div class="hero-sub">Screen the whole universe by returns, valuation, breadth position, filing context, and multi-year relative performance in one place.</div>
         </div>
         <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
           <span class="pill-chip"><strong>Rows</strong>{len(df)}</span>

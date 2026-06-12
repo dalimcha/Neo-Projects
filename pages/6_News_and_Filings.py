@@ -263,7 +263,11 @@ with st.sidebar:
         default_days = 730
     days_back = st.slider("Days Back", min_value=1, max_value=730, value=default_days)
 
-page_header("", "")
+page_header(
+    "News & Filings",
+    "Catalyst tape for results, order wins, management updates, ratings, and linked mover context.",
+    data_status="Fresh" if filings_status == "Fresh" or news_status == "Fresh" else ("Delayed" if filings_status in {"Delayed", "Cached"} or news_status in {"Delayed", "Cached"} else "Stale"),
+)
 
 material_items = 0
 if not filings_df.empty and "is_material" in filings_df.columns:
@@ -274,8 +278,8 @@ if not news_df.empty and "is_material" in news_df.columns:
 html_block(
     f"""<div class="hero-panel">
           <div class="hero-kicker">Event Tape</div>
-          <div class="hero-title">News and Filings</div>
-          <div class="hero-sub">Actionability-first event layer for daily catalyst detection, mover attribution, and meeting prep.</div>
+          <div class="hero-title">Actionable News and Filing Flow</div>
+          <div class="hero-sub">Use this page to explain price action, find fresh catalysts, and build a queue for review instead of reading every filing manually.</div>
           <div style="margin-top:0.55rem;display:flex;gap:0.45rem;flex-wrap:wrap;">
             <span class="chip">Material {material_items}</span>
             <span class="chip">Filings {len(filings_df)}</span>
@@ -399,19 +403,22 @@ with tab4:
     if returns_df.empty or "return_1d" not in returns_df.columns:
         info_block("No return snapshot available.")
     else:
-        movers = returns_df.dropna(subset=["return_1d"]).copy()
-        movers = movers.sort_values("return_1d", ascending=False).head(20)
+        gainers = returns_df.dropna(subset=["return_1d"]).copy().sort_values("return_1d", ascending=False).head(10)
+        losers = returns_df.dropna(subset=["return_1d"]).copy().sort_values("return_1d", ascending=True).head(10)
+        movers = pd.concat([gainers, losers], ignore_index=True)
         rows = ""
         for _, row in movers.iterrows():
             ticker = str(row.get("ticker", "")).upper()
             filing = latest_filing_map.get(ticker, "No filing linked")
             news = latest_news_map.get(ticker, "No news linked")
+            move = pd.to_numeric(row.get("return_1d"), errors="coerce")
+            move_cls = "pos" if pd.notna(move) and move >= 0 else "neg"
             rows += (
                 "<tr>"
                 f"<td class='ticker'>{ticker}</td>"
                 f"<td class='name'>{row.get('company_name', '')}</td>"
                 f"<td class='left'>{row.get('sector', 'N/A')}</td>"
-                f"<td>{row.get('return_1d', float('nan')) * 100:.2f}%</td>"
+                f"<td class='{move_cls}'>{row.get('return_1d', float('nan')) * 100:.2f}%</td>"
                 f"<td>{row.get('return_1w', float('nan')) * 100:.2f}%</td>"
                 f"<td>{row.get('volume_ratio_30d', float('nan')):.2f}x</td>"
                 f"<td class='left' style='max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{filing}</td>"
@@ -432,7 +439,7 @@ with tab4:
                 </tr></thead>
                 <tbody>{rows}</tbody>
                </table>""",
-            caption="Top 20 gainers",
+            caption="Top 10 gainers + Top 10 losers",
             caption_right="Used by Biggest Movers workflow",
         )
 

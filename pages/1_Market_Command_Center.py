@@ -12,6 +12,7 @@ Canonical front page wired only to Phase 1 datasets:
 from __future__ import annotations
 
 from datetime import datetime
+from html import escape
 
 import pandas as pd
 import streamlit as st
@@ -332,8 +333,8 @@ quality_report = build_universe_report(
 
 status, last_ts = _latest_quality_status(quality_log_df, dataset="prices")
 page_header(
-    "",
-    "",
+    "Market Command Center",
+    "Real-time operating surface for breadth, movers, sectors, and catalyst-linked tape.",
     data_status=(status.title() if isinstance(status, str) else quality_report.fetch_status),
     stamp_text=f"{universe_label} · {quality_report.valid_price_rows}/{quality_report.expected_count} · Updated {last_ts or 'N/A'} IST",
     paused_message=None if quality_report.passes else f"Universe incomplete ({quality_report.valid_price_rows}/{quality_report.expected_count}) — analytics paused",
@@ -377,8 +378,9 @@ html_block(
     <div class="hero-panel">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
         <div>
-          <div class="hero-sub" style="text-transform:uppercase;letter-spacing:0.10em;font-size:0.62rem;">Command Center</div>
-          <div class="hero-title">Deterministic Market Brief</div>
+          <div class="hero-kicker">Command Center</div>
+          <div class="hero-title">Opening Read on the Market</div>
+          <div class="hero-sub">Above-the-fold signal before detail: index tone, breadth quality, sector leadership, and the catalysts actually driving tape.</div>
         </div>
         <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
           <span class="pill-chip"><strong>Universe</strong>{quality_report.valid_price_rows}/{quality_report.expected_count}</span>
@@ -389,7 +391,12 @@ html_block(
     </div>
     """
 )
-st.code("\n".join(brief_lines), language=None)
+html_block(
+    "<div class='surface-box'>"
+    "<div class='surface-title'>Deterministic Market Brief</div>"
+    "<div class='surface-note'>" + "<br>".join(escape(line) for line in brief_lines) + "</div>"
+    "</div>"
+)
 st.download_button("Copy Morning Brief", data="\n".join(brief_lines), file_name="morning_brief.txt", mime="text/plain")
 
 section_label("Market Breadth")

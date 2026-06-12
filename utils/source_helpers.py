@@ -45,7 +45,7 @@ def na(label: str = "N/A", source: SourceTag | None = None) -> str:
         return (
             f'<span style="color:#475569;font-family:\'JetBrains Mono\',monospace;">'
             f'{label}</span>'
-            f'<div style="font-size:0.6rem;color:#2d3f5a;margin-top:2px;">{source.short()}</div>'
+            f'<div style="font-size:0.6rem;color:#2d3f5a;margin-top:2px;font-family:\'JetBrains Mono\',monospace;">{source.short()}</div>'
         )
     return f'<span style="color:#475569;font-family:\'JetBrains Mono\',monospace;">{label}</span>'
 
