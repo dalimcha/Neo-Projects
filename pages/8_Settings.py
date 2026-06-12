@@ -253,6 +253,60 @@ with tabs[2]:
         except Exception as e:
             warn_block(f"Import failed: {e}")
 
+    st.write("")
+    section_label("Upload Trusted News File")
+    info_block(
+        "Use this when public feeds are stale or incomplete. "
+        "Accepted columns are flexible. Recommended fields: headline/title, date/published_at, "
+        "source/publisher, url/link, ticker/tickers, sector, sentiment, summary, materiality score."
+    )
+    news_uploaded = st.file_uploader("Upload News CSV", type=["csv"], key="news_upload")
+    if news_uploaded:
+        try:
+            news_preview = pd.read_csv(news_uploaded)
+            st.dataframe(news_preview.head(10), width="stretch")
+            template_df = pd.DataFrame(
+                [
+                    {
+                        "headline": "L&T wins major EPC order for transmission corridor",
+                        "date": "2026-06-12 08:45:00",
+                        "source": "Manual Research",
+                        "url": "https://example.com/article",
+                        "tickers": "LT",
+                        "sector": "Capital Goods",
+                        "sentiment": "positive",
+                        "summary": "Large domestic T&D award adds to execution visibility.",
+                        "is_material": True,
+                        "materiality_score": 84,
+                        "categories": "order_win",
+                    }
+                ]
+            )
+            st.download_button(
+                "Download News Template",
+                data=template_df.to_csv(index=False).encode("utf-8"),
+                file_name="news_import_template.csv",
+                mime="text/csv",
+            )
+            if st.button("Import to News Feed"):
+                upload_path = ROOT / "data" / "_uploaded_news.csv"
+                with open(upload_path, "wb") as f:
+                    f.write(news_uploaded.getbuffer())
+                cmd = [
+                    sys.executable,
+                    str(ROOT / "scripts" / "update_news.py"),
+                    "--import-csv",
+                    str(upload_path),
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if result.returncode == 0:
+                    ok_block("News import completed.")
+                    st.cache_data.clear()
+                else:
+                    warn_block(f"News import failed: {result.stderr[:300]}")
+        except Exception as e:
+            warn_block(f"News upload failed: {e}")
+
 # ── TAB 4: Universe Editor ────────────────────────────────────────────────────
 with tabs[3]:
     section_label("Universe Management")

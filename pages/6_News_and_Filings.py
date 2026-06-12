@@ -246,6 +246,23 @@ with st.sidebar:
             st.code(output or "No output captured.")
 
     st.markdown("---")
+    html_block('<div class="sec-label">Manual News Import</div>')
+    manual_news = st.file_uploader("Trusted News CSV", type=["csv"], key="manual_news_import")
+    if manual_news is not None:
+        if st.button("Import News CSV"):
+            upload_path = ROOT / "data" / "_uploaded_news.csv"
+            with open(upload_path, "wb") as f:
+                f.write(manual_news.getbuffer())
+            ok, output = _run_script("update_news.py", ["--import-csv", str(upload_path)])
+            if ok:
+                st.success("Manual news import completed.")
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.error("Manual news import failed.")
+                st.code(output or "No output captured.")
+
+    st.markdown("---")
     html_block('<div class="sec-label">Filters</div>')
     ticker_opts = ["All"] + sorted(universe_df["ticker"].dropna().astype(str).str.upper().unique().tolist()) if not universe_df.empty else ["All"]
     sector_opts = ["All"] + sorted(universe_df["sector"].dropna().astype(str).unique().tolist()) if not universe_df.empty else ["All"]
@@ -293,6 +310,8 @@ html_block(
             <span class="chip">Filings {len(filings_df)}</span>
             <span class="chip">News {len(news_df)}</span>
             <span class="chip">Universe {len(universe_df)}</span>
+            <span class="chip">Filings {filings_status}</span>
+            <span class="chip">News {news_status}</span>
           </div>
         </div>"""
 )
@@ -301,6 +320,11 @@ if filings_status in {"Failed", "Stale"} and news_status in {"Failed", "Stale"}:
     warn_block("Both event feeds are stale or failed. Refresh filings and news before relying on move explanations.")
 elif filings_status == "Cached" or news_status == "Cached":
     info_block("Using cached event data. Refresh filings and news to restore daily catalyst coverage.")
+elif news_status in {"Stale", "Failed"}:
+    warn_block(
+        "News is stale. Use manual trusted news import from the sidebar or Settings. "
+        "Filings remain the stronger event source until news freshness is restored."
+    )
 
 section_label("Signal")
 latest_filing_map = _latest_event_map(filings_df, "ticker", "subject")

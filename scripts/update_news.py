@@ -236,25 +236,95 @@ def import_csv(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
     rename = {
         "Headline": "headline",
+        "headline": "headline",
+        "Title": "headline",
+        "title": "headline",
         "Source": "source",
+        "source": "source",
+        "Publisher": "source",
+        "publisher": "source",
         "Date": "date",
+        "date": "date",
+        "Published At": "date",
+        "published_at": "date",
         "URL": "url",
+        "url": "url",
+        "Link": "url",
+        "link": "url",
         "Tickers": "tickers_mentioned",
+        "tickers": "tickers_mentioned",
+        "Ticker": "tickers_mentioned",
+        "ticker": "tickers_mentioned",
+        "Tickers Mentioned": "tickers_mentioned",
         "Sector": "sector",
+        "sector": "sector",
         "Sentiment": "sentiment",
+        "sentiment": "sentiment",
         "Summary": "ai_summary",
+        "summary": "ai_summary",
+        "AI Summary": "ai_summary",
         "Material": "is_material",
+        "material": "is_material",
+        "Is Material": "is_material",
         "Materiality Score": "materiality_score",
+        "materiality_score": "materiality_score",
+        "Score": "materiality_score",
         "Categories": "categories",
+        "categories": "categories",
+        "Category": "categories",
+        "category": "categories",
     }
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+    if "headline" not in df.columns:
+        raise ValueError("Manual news import requires a headline/title column.")
+    if "date" not in df.columns:
+        raise ValueError("Manual news import requires a date/published_at column.")
     for col in NEWS_COLUMNS:
         if col not in df.columns:
             df[col] = "" if col not in {"is_material"} else False
+    df["headline"] = df["headline"].map(_clean_text)
+    if "source" in df.columns:
+        df["source"] = df["source"].map(_clean_text)
+    if "url" in df.columns:
+        df["url"] = df["url"].map(_clean_text)
+    if "tickers_mentioned" in df.columns:
+        df["tickers_mentioned"] = (
+            df["tickers_mentioned"]
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .str.replace(",", "|")
+            .str.replace(" ", "", regex=False)
+        )
+    if "sentiment" in df.columns:
+        df["sentiment"] = df["sentiment"].fillna("").astype(str).str.lower().str.strip()
+    if "categories" in df.columns:
+        df["categories"] = df["categories"].fillna("").astype(str).str.strip()
+    if "sector" in df.columns:
+        df["sector"] = df["sector"].fillna("").astype(str).str.strip()
+    if "ai_summary" in df.columns:
+        df["ai_summary"] = df["ai_summary"].fillna("").astype(str).str.strip()
+    if "is_material" in df.columns:
+        df["is_material"] = (
+            df["is_material"]
+            .map(lambda x: str(x).strip().lower() in {"1", "true", "yes", "y"})
+            .astype(bool)
+        )
     df["ingested_at"] = now_ist_iso()
     df["source_type"] = "Manual CSV"
     if "materiality_score" in df.columns:
         df["materiality_score"] = pd.to_numeric(df["materiality_score"], errors="coerce").fillna(0)
+    missing_sentiment = df["sentiment"].astype(str).str.strip() == ""
+    df.loc[missing_sentiment, "sentiment"] = df.loc[missing_sentiment, "headline"].map(_infer_sentiment)
+    missing_categories = df["categories"].astype(str).str.strip() == ""
+    df.loc[missing_categories, "categories"] = df.loc[missing_categories, "headline"].map(_infer_categories)
+    no_material = df["materiality_score"].fillna(0).eq(0)
+    df.loc[no_material, "materiality_score"] = df.loc[no_material].apply(
+        lambda r: _materiality_score(str(r.get("headline", "")), str(r.get("sentiment", "")), str(r.get("categories", ""))),
+        axis=1,
+    )
+    no_flag = ~df["is_material"].astype(bool)
+    df.loc[no_flag, "is_material"] = df.loc[no_flag, "headline"].map(_is_material)
     return df[NEWS_COLUMNS].copy()
 
 
