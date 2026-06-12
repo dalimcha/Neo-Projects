@@ -24,3 +24,9 @@ news_20260611_232300,news,Nifty500,0,268,0,0,0,0,0.0,fresh,RSS/manual,,No RSS it
 news_20260611_233951,news,Nifty500,0,4,0,0,0,0,0.0,fresh,RSS/manual,2026-06-11T23:39:51.839460+05:30,News rows stored: 4,2026-06-11T23:39:51.841484+05:30
 filings_20260611_233952,filings,Nifty500,0,29,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-11T23:39:53.082115+05:30,Stored filings rows: 29,2026-06-11T23:39:53.084542+05:30
 news_20260612_011439,news,Nifty500,0,4,0,0,0,0,0.0,fresh,RSS/manual,,No RSS items fetched; retained existing file.,2026-06-12T01:14:40.026124+05:30
+filings_20260612_140429,filings,Nifty500,0,29,0,0,0,0,0.0,fresh,NSE Corporate Announcements,,No live filings fetched; retained existing file.,2026-06-12T14:04:29.225177+05:30
+news_20260612_140435,news,Nifty500,0,4,0,0,0,0,0.0,fresh,RSS/manual,2026-06-12T14:04:37.421283+05:30,News rows stored: 4,2026-06-12T14:04:37.424707+05:30
+filings_20260612_140730,filings,Nifty500,0,29,0,0,0,0,0.0,fresh,NSE Corporate Announcements,2026-06-12T14:07:30.519585+05:30,No live filings fetched; retained existing file.,2026-06-12T14:07:30.522567+05:30
+news_20260612_140751,news,Nifty500,0,4,0,0,0,0,0.0,fresh,RSS/manual,2026-06-12T14:07:54.714994+05:30,News rows stored: 4,2026-06-12T14:07:54.717174+05:30
+filings_20260612_145258,filings,Nifty500,0,29,0,0,0,0,0.0,cached,NSE Corporate Announcements,2026-06-12T14:52:58.386873+05:30,No live filings fetched; retained existing file.,2026-06-12T14:52:58.394789+05:30
+news_20260612_145259,news,Nifty500,0,4,0,0,0,0,0.0,stale,RSS/manual,2026-06-12T14:53:02.122406+05:30,News rows stored: 4; latest article date is stale (2024-04-23),2026-06-12T14:53:02.124228+05:30
